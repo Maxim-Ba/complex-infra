@@ -1,0 +1,14 @@
+
+x-fluentd: &fluentd
+  container_name: fluentd
+  # build: 
+      # context: ./
+      # dockerfile: ./Dockerfile
+  volumes:
+    - ./fluentd/conf:/fluentd/etc
+  depends_on:
+    # Launch fluentd after that elasticsearch is ready to connect
+    - opensearch
+  ports:
+    - "24224:24224"
+    - "24224:24224/udp"
