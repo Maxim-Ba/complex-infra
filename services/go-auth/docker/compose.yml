@@ -1,0 +1,9 @@
+x-go-auth: &go-auth
+  container_name: go-auth
+    # build:
+    # - context:
+    # - dockerfile: ./Dockerfile
+  ports: 
+    - "8080:8080"
+  depends_on:
+    - fluentd
