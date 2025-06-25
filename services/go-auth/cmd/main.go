@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"go-auth/pkg/tracer"
 	"log/slog"
 	"net/http"
 	"os"
@@ -12,6 +13,11 @@ import (
 
 func main() {
 	fmt.Println("start go-auth")
+
+	_, err := tracer.InitTracer("http://localhost:14268/api/traces", "Note Service")
+if err != nil {
+	slog.Error("init tracer", err)
+}
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		AddSource: true,
 		Level:     slog.LevelDebug,
@@ -22,6 +28,7 @@ func main() {
 		Addr:    ":8080",
 		Handler: router,
 	}
+	
 	slog.Info("server start")
 	if err := httpServer.ListenAndServe(); err != nil {
 		slog.Error(err.Error())
@@ -34,6 +41,10 @@ func main() {
 
 func handler(w http.ResponseWriter, r *http.Request) {
 	slog.Info("handler start")
+_, span:= 	tracer.Tracer.Start(r.Context(), "handler")
+defer span.End()
 	slog.Info("handler end")
 	w.WriteHeader(http.StatusOK)
 }
+
+

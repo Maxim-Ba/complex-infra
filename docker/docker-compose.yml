@@ -1,0 +1,127 @@
+
+x-logging: &logging
+  logging:
+    driver: "fluentd"
+    options:
+      fluentd-address: "localhost:24224"
+      tag: "{{.ImageName}}|{{.Name}}"
+      
+
+services:
+  fluentd:
+    build: 
+      context: ../observ/fluentd/docker
+      dockerfile: ./Dockerfile
+    container_name: fluentd
+    volumes: 
+      - ../observ/fluentd/conf:/fluentd/etc
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    ports:
+      - "24224:24224"
+      - "24224:24224/udp"
+      - "24225:24225"
+    networks:  
+      - opensearch-net
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:24225/health || exit 1"]
+
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    
+  opensearch:
+    image: opensearchproject/opensearch:latest  
+    container_name: opensearch-node1
+    environment:
+      - cluster.name=opensearch-cluster
+      - node.name=opensearch-node1
+      - discovery.seed_hosts=opensearch-node1
+      - cluster.initial_cluster_manager_nodes=opensearch-node1
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=OPENSEARCH
+      - "DISABLE_SECURITY_PLUGIN=true"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - opensearch-data1:/usr/share/opensearch/data
+    ports:
+      - 9200:9200
+      - 9600:9600
+    restart: always
+    networks:
+      - opensearch-net
+    healthcheck:
+      test: [
+        "CMD-SHELL",
+        "curl -sSf http://localhost:9200/_cluster/health | grep -qE '\"status\":\"(green|yellow)\"'"
+      ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s  # Даем OpenSearch время на запуск
+  opensearch-dashboards:
+      container_name: opensearch-dashboards
+      image: opensearchproject/opensearch-dashboards:latest # Make sure the version of opensearch-dashboards matches the version of opensearch installed on other nodes
+      ports:
+        - 5601:5601 # Map host port 5601 to container port 5601
+      expose:
+        - "5601" # Expose port 5601 for web access to OpenSearch Dashboards
+      environment:
+        OPENSEARCH_HOSTS: http://opensearch-node1:9200 # Define the OpenSearch nodes that OpenSearch Dashboards will query
+        DISABLE_SECURITY_DASHBOARDS_PLUGIN: true
+      restart: always
+      networks:
+        - opensearch-net
+      depends_on:
+        opensearch:
+          condition: service_healthy
+  go-auth:    
+    container_name: go-auth
+    build:
+      context: ../services/go-auth
+      dockerfile: ./docker/Dockerfile
+    volumes: 
+      - ../services/go-auth/:/usr/local/src/
+    ports: 
+      - "8080:8080"
+    depends_on:
+      fluentd:
+        condition: service_healthy
+    restart: always
+    <<: *logging
+    networks:
+      - opensearch-net
+    command: sh -c "sleep 10 && /app"
+  jaeger:
+    image: jaegertracing/all-in-one
+    ports:
+      - "14268:14268"
+      - "16686:16686"
+  redis:
+    restart: on-failure
+    image: "redis:latest"
+    command: redis-server --port 6380
+    ports:
+      - "6379:6379"
+    environment:
+      REDIS_REPLICATION_MODE: master
+    volumes:
+      - redis-data:/var/lib/redis
+
+volumes:
+  opensearch-data1:
+  redis-data:
+
+networks:
+  opensearch-net:
+    driver: bridge
+

@@ -1,0 +1,13 @@
+{
+  "template": "fluentd-*",
+  "settings": {
+    "number_of_shards": 1
+  },
+  "mappings": {
+    "properties": {
+      "@timestamp": { "type": "date" },
+      "message": { "type": "text" },
+      "container_name": { "type": "keyword" }
+    }
+  }
+}

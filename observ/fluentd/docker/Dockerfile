@@ -1,5 +1,9 @@
 
-FROM fluent/fluentd:edge-debian
+FROM fluent/fluentd:v1.16-1
 USER root
-RUN ["gem", "install", "fluent-plugin-elasticsearch", "--no-document", "--version", "5.4.3"]
+RUN apk add --no-cache curl
+
+RUN gem install fluent-plugin-opensearch --no-document
+RUN gem install fluent-plugin-docker --no-document
+
 USER fluent

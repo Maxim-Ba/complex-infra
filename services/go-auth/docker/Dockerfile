@@ -8,14 +8,14 @@ RUN go mod download
 
 COPY . ./
 
-RUN go build -o ./bin/app main.go
+RUN go build -o ./bin/app ./cmd/main.go
 
 FROM alpine
 
-RUN apk update && \
-    apk upgrate -U && \
-    apk add ca-certificares && \
-    rm -rf /var/caches/*
+RUN apk --no-cache update && \
+  apk --no-cache upgrade && \
+  apk --no-cache add ca-certificates \
+  rm -rf /var/cache/*
 
 COPY --from=bulder /usr/local/src/bin/app /
 
