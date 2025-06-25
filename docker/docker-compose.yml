@@ -103,9 +103,18 @@ services:
     command: sh -c "sleep 10 && /app"
   jaeger:
     image: jaegertracing/all-in-one
+    container_name: jaeger
+
     ports:
-      - "14268:14268"
-      - "16686:16686"
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "14268:14268" # Thrift HTTP (для обратной совместимости)
+      - "16686:16686" # UI
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - opensearch-net
+
   redis:
     restart: on-failure
     image: "redis:latest"

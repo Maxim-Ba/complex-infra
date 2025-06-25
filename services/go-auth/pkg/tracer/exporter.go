@@ -12,11 +12,11 @@ type SpanExporter interface {
 }
 // NewJaegerExporter creates new jaeger exporter
 //
-//	url example - http://localhost:14268/api/traces
 func NewJaegerExporter(url string) (tracesdk.SpanExporter, error) {
 	return otlptracehttp.New(
 		context.Background(),
-		otlptracehttp.WithEndpoint(url),
+		otlptracehttp.WithEndpoint(url), // "jaeger:4318"
 		otlptracehttp.WithInsecure(),
+		otlptracehttp.WithURLPath("/v1/traces"), // Это важно для HTTP
 	)
 }
