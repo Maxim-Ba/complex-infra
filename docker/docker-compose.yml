@@ -93,6 +93,7 @@ services:
       - ../services/go-auth/:/usr/local/src/
     ports: 
       - "8080:8080"
+      - "8081:8081"  # порт для метрик 
     depends_on:
       fluentd:
         condition: service_healthy
@@ -101,6 +102,11 @@ services:
     networks:
       - opensearch-net
     command: sh -c "sleep 10 && /app"
+    labels:
+      - "prometheus.scrape=true"
+      - "prometheus.port=8081"
+      - "prometheus.path=/metrics"
+
   jaeger:
     image: jaegertracing/all-in-one
     container_name: jaeger
@@ -125,10 +131,41 @@ services:
       REDIS_REPLICATION_MODE: master
     volumes:
       - redis-data:/var/lib/redis
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: always
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-storage:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_DEFAULT_THEME=light
+    depends_on:
+      - prometheus
+    networks:
+      - opensearch-net
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: always
+    ports:
+      - "9090:9090"
+    volumes:
+      - ../observ/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    depends_on:
+      - go-auth
+    networks:
+      - opensearch-net
+
 
 volumes:
   opensearch-data1:
   redis-data:
+  grafana-storage:
 
 networks:
   opensearch-net:

@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"go-auth/pkg/metrics"
 	"go-auth/pkg/tracer"
 	"log/slog"
 	"net/http"
@@ -25,14 +26,19 @@ func main() {
 		AddSource: true,
 		Level:     slog.LevelDebug,
 	})))
+
+	metrics.Start(":8081")
+	
 	router := chi.NewRouter()
+	router.Use(metrics.MetricsMiddleware)
 	router.Get("/", handler)
 	router.Get("/error", emitError)
+
 	httpServer := &http.Server{
 		Addr:    ":8080",
 		Handler: router,
 	}
-
+	
 	slog.Info("server start")
 	if err := httpServer.ListenAndServe(); err != nil {
 		slog.Error(err.Error())
