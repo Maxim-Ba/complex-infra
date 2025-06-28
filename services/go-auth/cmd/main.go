@@ -3,42 +3,52 @@ package main
 import (
 	"errors"
 	"fmt"
+	"go-auth/internal/app"
+	"go-auth/internal/config"
+	"go-auth/internal/router"
+	"go-auth/internal/services"
 	"go-auth/pkg/metrics"
+	"go-auth/pkg/redis"
 	"go-auth/pkg/tracer"
 	"log/slog"
 	"net/http"
 	"os"
 
-	"github.com/go-chi/chi/v5"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/trace"
+	"go.uber.org/dig"
 )
 
 func main() {
 	fmt.Println("start go-auth")
 
+	app.AppContainer = dig.New()
+
+	if err := app.AppContainer.Provide(services.AuthNew); err != nil {
+		panic(fmt.Sprintf("auth service can not be provided %s", err.Error()))
+	}
+	if err := app.AppContainer.Provide(config.New); err != nil {
+		panic(fmt.Sprintf("config can not be provided %s", err.Error()))
+	}
+	if err := app.AppContainer.Provide(redis.New); err != nil {
+		panic(fmt.Sprintf("redis can not be provided %s", err.Error()))
+	}
+
 	_, err := tracer.InitTracer("jaeger:4318", "go-auth service")
 	if err != nil {
 		slog.Error(err.Error())
 	}
+
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		AddSource: true,
 		Level:     slog.LevelDebug,
 	})))
 
 	metrics.Start(":8081")
-	
-	router := chi.NewRouter()
-	router.Use(metrics.MetricsMiddleware)
-	router.Get("/", handler)
-	router.Get("/error", emitError)
 
 	httpServer := &http.Server{
 		Addr:    ":8080",
-		Handler: router,
+		Handler: router.New(),
 	}
-	
+
 	slog.Info("server start")
 	if err := httpServer.ListenAndServe(); err != nil {
 		slog.Error(err.Error())
@@ -47,31 +57,4 @@ func main() {
 		}
 		panic(err)
 	}
-}
-
-func handler(w http.ResponseWriter, r *http.Request) {
-	slog.Info("handler start")
-	// _, span:= 	tracer.Tracer.Start(r.Context(), "handler")
-	t := otel.Tracer("handler")
-	_, span := t.Start(r.Context(), "handler")
-	defer span.End()
-	slog.Info("handler end")
-	w.WriteHeader(http.StatusOK)
-}
-
-func emitError(w http.ResponseWriter, r *http.Request) {
-	slog.Info("emitError start")
-
-	t := otel.Tracer("emitError")
-	ctx, span := t.Start(r.Context(), "emitError")
-	defer span.End()
-	someError := errors.New("some error")
-	if sp := trace.SpanFromContext(ctx); sp.IsRecording() {
-		sp.RecordError(someError)
-		sp.SetStatus(codes.Error, someError.Error())
-	}
-
-	slog.Info("emitError end")
-	http.Error(w, "Error handler", http.StatusBadRequest)
-
 }

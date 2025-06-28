@@ -106,7 +106,9 @@ services:
       - "prometheus.scrape=true"
       - "prometheus.port=8081"
       - "prometheus.path=/metrics"
-
+    environment:
+      - JWT_SECRET=any
+      - REDIS_ADDRESS=redis:6380
   jaeger:
     image: jaegertracing/all-in-one
     container_name: jaeger
@@ -131,6 +133,8 @@ services:
       REDIS_REPLICATION_MODE: master
     volumes:
       - redis-data:/var/lib/redis
+    networks:
+      - opensearch-net
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
