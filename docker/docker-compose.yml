@@ -126,13 +126,13 @@ services:
   redis:
     restart: on-failure
     image: "redis:latest"
-    command: redis-server --port 6380
+    command: redis-server --port 6380 --save 60 1 --appendonly yes
     ports:
       - "6379:6379"
     environment:
       REDIS_REPLICATION_MODE: master
     volumes:
-      - redis-data:/var/lib/redis
+      - redis-data:/data
     networks:
       - opensearch-net
   grafana:
