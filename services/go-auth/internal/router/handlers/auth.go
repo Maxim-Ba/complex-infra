@@ -61,6 +61,12 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Redis error", http.StatusInternalServerError)
 		return
 	}
+	keys, err := redisDB.Keys(r.Context(), "*").Result()
+if err != nil {
+    slog.Error("Failed to list keys", "error", err)
+} else {
+    slog.Info("Redis keys", "keys", keys)
+}
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Logged in successfully"))
 

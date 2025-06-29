@@ -36,6 +36,6 @@ func New() *redis.Client {
 	}
 	fmt.Println(pong)
 	slog.Info("Successfully connected to Redis")
-
+	// TODO defer close 
 	return rdb
 }

@@ -18,6 +18,8 @@ services:
     depends_on:
       opensearch:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
     ports:
       - "24224:24224"
       - "24224:24224/udp"
@@ -165,6 +167,59 @@ services:
     networks:
       - opensearch-net
 
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: kafka
+    ports:
+      - "9092:9092"
+      - "9093:9093" 
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_NODE_ID: 1
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      KAFKA_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"  
+
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      CLUSTER_ID: BKf8e5R0Q1mihueYSeGK2w
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
+
+    networks:
+      - opensearch-net
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server kafka:9092 --list"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  go-messages:
+    container_name: go-messages
+    build:
+      context: ../services/go-messages
+      dockerfile: ./docker/Dockerfile
+    volumes: 
+      - ../services/go-messages/:/usr/local/src/
+    ports: 
+      - "8084:8080"
+      - "8085:8081"  # порт для метрик 
+    depends_on:
+      fluentd:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    restart: always
+    <<: *logging
+    networks:
+      - opensearch-net
+    command: sh -c "sleep 10 && /app"
+    labels:
+      - "prometheus.scrape=true"
+      - "prometheus.port=8081"
+      - "prometheus.path=/metrics"
+    environment:
+      - REDIS_ADDRESS=redis:6380
 
 volumes:
   opensearch-data1:
