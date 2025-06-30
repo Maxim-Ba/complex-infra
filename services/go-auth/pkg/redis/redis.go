@@ -11,6 +11,11 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+type Redis struct {
+}
+
+var client *redis.Client
+
 func New() *redis.Client {
 	var redisAddr string
 	err := app.AppContainer.Invoke(func(cfg *config.Config) {
@@ -26,8 +31,8 @@ func New() *redis.Client {
 		Password: "",        // пароль, если есть
 		DB:       0,         // номер базы данных
 		PoolSize: 10,        // ???
-
 	})
+	
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	pong, err := rdb.Ping(ctx).Result()
@@ -36,6 +41,12 @@ func New() *redis.Client {
 	}
 	fmt.Println(pong)
 	slog.Info("Successfully connected to Redis")
-	// TODO defer close 
+
+	client = rdb
+
 	return rdb
+}
+
+func (r *Redis) Close() {
+	client.Close()
 }

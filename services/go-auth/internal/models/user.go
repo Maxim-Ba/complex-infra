@@ -1,6 +1,6 @@
 package models
 
-type UserCreate struct {
+type UserCreateReq struct {
 	Login    string
 	Password string
 }
@@ -8,4 +8,9 @@ type UserCreate struct {
 type UserCreateRes struct {
 	Login string
 	Id    string
+}
+
+type UserCreateDto struct {
+	Login        string
+	PasswordHash string
 }

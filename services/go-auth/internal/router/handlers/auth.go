@@ -5,23 +5,22 @@ import (
 	"go-auth/internal/app"
 	"go-auth/internal/models"
 	"go-auth/internal/services"
+	"go-auth/internal/storage"
 	"log/slog"
 	"net/http"
-
-	"github.com/redis/go-redis/v9"
 )
 
 func Register(w http.ResponseWriter, r *http.Request) {
-	var u models.UserCreate
+	var u models.UserCreateReq
 	if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
 	var authService *services.AuthService
-	var redisDB *redis.Client
-	err := app.AppContainer.Invoke(func(as *services.AuthService, rds *redis.Client) {
-		redisDB = rds
+	var tokenStore *storage.TokenStorage
+	err := app.AppContainer.Invoke(func(as *services.AuthService, s *storage.TokenStorage) {
+		tokenStore = s
 		authService = as
 	})
 	if err != nil {
@@ -52,23 +51,14 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		// Secure:   true,
 		SameSite: http.SameSiteStrictMode,
 	})
-	pipe := redisDB.Pipeline()
-	pipe.Set(r.Context(), "access:"+jwt, jwt, 3600)
-	pipe.Set(r.Context(), "refresh:"+jwt, jwt, 30*24*3600)
-	_, err = pipe.Exec(r.Context())
-	if err != nil {
+
+	if err := tokenStore.SetTokens(r.Context(), jwt, jwt); err != nil {
 		slog.Error(err.Error())
-		http.Error(w, "Redis error", http.StatusInternalServerError)
-		return
+		http.Error(w, "token store error", http.StatusInternalServerError)
 	}
-	keys, err := redisDB.Keys(r.Context(), "*").Result()
-if err != nil {
-    slog.Error("Failed to list keys", "error", err)
-} else {
-    slog.Info("Redis keys", "keys", keys)
-}
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Logged in successfully"))
+
+	w.WriteHeader(http.StatusNoContent)
+	w.Write([]byte(""))
 
 }
 

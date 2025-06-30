@@ -7,6 +7,9 @@ import (
 type Envs struct {
 	Secret    string `env:"JWT_SECRET"`
 	RedisAddr string `env:"REDIS_ADDRESS"`
+	MetricsAddr string `env:"METRICS_ADDRESS"`
+	ServerAddr string `env:"SERVER_ADDRESS"`
+	JaegerAddr string `env:"JEAGER_ADDRESS"`
 }
 
 func ParseEnv() (*Envs, error) {

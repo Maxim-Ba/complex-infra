@@ -8,31 +8,44 @@ import (
 	"go-auth/internal/app"
 	"go-auth/internal/config"
 	"go-auth/internal/models"
+	"go-auth/internal/storage"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
 type AuthService struct {
+	userStorage *storage.UserStorage
 }
 
-func AuthNew() *AuthService {
-	return &AuthService{}
+func AuthNew(userStorage *storage.UserStorage) *AuthService {
+	return &AuthService{userStorage: userStorage}
 }
 
-func (s AuthService) Create(user models.UserCreate) (string, error) {
-	u := models.UserCreateRes{}
+func (s AuthService) Create(user models.UserCreateReq) (string, error) {
+
 	if user.Login == "" || user.Password == "" {
 		return "", errors.New("login and password are required")
 	}
-	// если в БД их нет, то записать
-
-	jwt, err := s.GenerateJWT(u)
+	pswdHash, err := getHash(user.Password)
+	if err != nil {
+		return "", err
+	}
+	existingUser, err := s.userStorage.Get(models.UserCreateDto{Login: user.Login, PasswordHash: pswdHash})
+	if err != nil {
+		return "", err
+	}
+	if existingUser != nil {
+		return "", ErrUserExists
+	}
+	u := s.userStorage.Save(user)
+	jwt, err := s.generateJWT(u)
 	if err != nil {
 		return jwt, err
 	}
 	return jwt, nil
 }
-func (s AuthService) GenerateJWT(user models.UserCreateRes) (string, error) {
+
+func (s AuthService) generateJWT(user models.UserCreateRes) (string, error) {
 	var secret string
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub": user.Id,
@@ -48,7 +61,7 @@ func (s AuthService) GenerateJWT(user models.UserCreateRes) (string, error) {
 	return token.SignedString([]byte(secret))
 }
 
-func ValidateJWT(tokenString string, secret string) (*jwt.Token, error) {
+func validateJWT(tokenString string, secret string) (*jwt.Token, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 
@@ -62,4 +75,8 @@ func ValidateJWT(tokenString string, secret string) (*jwt.Token, error) {
 	}
 
 	return token, nil
+}
+
+func getHash(s string) (string, error) {
+	return "", nil
 }
