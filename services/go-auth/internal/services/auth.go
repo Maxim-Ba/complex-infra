@@ -6,43 +6,51 @@ import (
 	"time"
 
 	"go-auth/internal/app"
-	"go-auth/internal/config"
 	"go-auth/internal/models"
-	"go-auth/internal/storage"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
 type AuthService struct {
-	userStorage *storage.UserStorage
+	userStorage app.AppUserStorage
 }
 
-func AuthNew(userStorage *storage.UserStorage) *AuthService {
+func AuthNew(userStorage app.AppUserStorage) *AuthService {
 	return &AuthService{userStorage: userStorage}
 }
 
-func (s AuthService) Create(user models.UserCreateReq) (string, error) {
-
+func (s AuthService) Create(user models.UserCreateReq) (*models.TokenDto, error) {
+	jwt := models.TokenDto{}
 	if user.Login == "" || user.Password == "" {
-		return "", errors.New("login and password are required")
+		return nil, errors.New("login and password are required")
 	}
 	pswdHash, err := getHash(user.Password)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	existingUser, err := s.userStorage.Get(models.UserCreateDto{Login: user.Login, PasswordHash: pswdHash})
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if existingUser != nil {
-		return "", ErrUserExists
+		return nil, ErrUserExists
 	}
 	u := s.userStorage.Save(user)
-	jwt, err := s.generateJWT(u)
-	if err != nil {
-		return jwt, err
+
+	// TODO refresh and access tokens
+
+	access, err := s.generateJWT(u)
+		if err != nil {
+		return nil, err
 	}
-	return jwt, nil
+	refresh, err := s.generateJWT(u)
+		if err != nil {
+		return nil, err
+	}
+	jwt.Access = access
+	jwt.Refresh = refresh
+	
+	return &jwt, nil
 }
 
 func (s AuthService) generateJWT(user models.UserCreateRes) (string, error) {
@@ -52,8 +60,8 @@ func (s AuthService) generateJWT(user models.UserCreateRes) (string, error) {
 		"exp": time.Now().Add(time.Hour * 24).Unix(),
 		"iat": time.Now().Unix(),
 	})
-	err := app.AppContainer.Invoke(func(cfg *config.Config) {
-		secret = cfg.Secret
+	err := app.AppContainer.Invoke(func(cfg app.AppConfig) {
+		secret = cfg.GetConfig().Secret
 	})
 	if err != nil {
 		return "", fmt.Errorf("error with invoke config, %w", err)

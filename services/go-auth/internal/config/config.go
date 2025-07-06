@@ -21,3 +21,6 @@ func New() *Config {
 		JaegerAddr:  cfg.JaegerAddr,
 	}
 }
+func (cfg *Config) GetConfig() *Config {
+	return cfg
+}

@@ -56,34 +56,34 @@ func main() {
 
 	<-exit
 
-	if err := httpServer.Close(); err!= nil {
+	if err := httpServer.Close(); err != nil {
 		slog.Error(err.Error())
 	}
-	
+
 	if err := app.AppContainer.Invoke(func(rds *redis.Redis) {
 		rds.Close()
-	}); err!= nil {
+	}); err != nil {
 		slog.Error(err.Error())
 	}
-	
+
 }
 
 func initAppContainer() {
 	app.AppContainer = dig.New()
 
-	if err := app.AppContainer.Provide(services.AuthNew); err != nil {
+	if err := app.AppContainer.Provide(services.AuthNew, dig.As(new(app.AppAuthService))); err != nil {
 		panic(fmt.Sprintf("auth service can not be provided %s", err.Error()))
 	}
-	if err := app.AppContainer.Provide(config.New); err != nil {
+	if err := app.AppContainer.Provide(config.New, dig.As(new(app.AppConfig))); err != nil {
 		panic(fmt.Sprintf("config can not be provided %s", err.Error()))
 	}
-	if err := app.AppContainer.Provide(redis.New); err != nil {
+	if err := app.AppContainer.Provide(redis.New, dig.As(new(app.AppRedis))); err != nil {
 		panic(fmt.Sprintf("redis can not be provided %s", err.Error()))
 	}
-	if err := app.AppContainer.Provide(storage.NewTokenStorage); err != nil {
+	if err := app.AppContainer.Provide(storage.NewTokenStorage, dig.As(new(app.AppTokenStorage))); err != nil {
 		panic(fmt.Sprintf("token storage can not be provided %s", err.Error()))
 	}
-	if err := app.AppContainer.Provide(storage.NewUserStorage); err != nil {
+	if err := app.AppContainer.Provide(storage.NewUserStorage, dig.As(new(app.AppUserStorage))); err != nil {
 		panic(fmt.Sprintf("user storage not be provided %s", err.Error()))
 	}
 }

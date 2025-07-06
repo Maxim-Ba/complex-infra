@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"go-auth/internal/app"
 	"go-auth/internal/models"
-	"go-auth/internal/services"
-	"go-auth/internal/storage"
 	"log/slog"
 	"net/http"
 )
@@ -17,9 +15,9 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var authService *services.AuthService
-	var tokenStore *storage.TokenStorage
-	err := app.AppContainer.Invoke(func(as *services.AuthService, s *storage.TokenStorage) {
+	var authService app.AppAuthService
+	var tokenStore  app.AppTokenStorage
+	err := app.AppContainer.Invoke(func(as app.AppAuthService, s app.AppTokenStorage) {
 		tokenStore = s
 		authService = as
 	})
@@ -32,10 +30,9 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	// TODO refresh and access tokens
 	http.SetCookie(w, &http.Cookie{
 		Name:     "access_token",
-		Value:    jwt,
+		Value:    jwt.Access,
 		Path:     "/",
 		MaxAge:   3600,
 		HttpOnly: true,
@@ -44,7 +41,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	})
 	http.SetCookie(w, &http.Cookie{
 		Name:     "refresh_token",
-		Value:    jwt,
+		Value:    jwt.Refresh,
 		Path:     "/",
 		MaxAge:   30 * 24 * 3600, // 30 дней
 		HttpOnly: true,
@@ -52,7 +49,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteStrictMode,
 	})
 
-	if err := tokenStore.SetTokens(r.Context(), jwt, jwt); err != nil {
+	if err := tokenStore.SetTokens(r.Context(), jwt); err != nil {
 		slog.Error(err.Error())
 		http.Error(w, "token store error", http.StatusInternalServerError)
 	}
