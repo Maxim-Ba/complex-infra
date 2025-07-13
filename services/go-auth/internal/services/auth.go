@@ -7,6 +7,7 @@ import (
 
 	"go-auth/internal/app"
 	"go-auth/internal/models"
+	"go-auth/internal/storage"
 
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -29,14 +30,17 @@ func (s AuthService) Create(user models.UserCreateReq) (*models.TokenDto, error)
 		return nil, err
 	}
 	existingUser, err := s.userStorage.Get(models.UserCreateDto{Login: user.Login, PasswordHash: pswdHash})
-	if err != nil {
-		return nil, err
+
+	if err != nil && err != storage.ErrUserNotFound{
+		return nil, fmt.Errorf( "AuthService Create check existingUser: %v", err ) 
 	}
 	if existingUser != nil {
 		return nil, ErrUserExists
 	}
 	u,err := s.userStorage.Save(models.UserCreateDto{Login:user.Login, PasswordHash: pswdHash } )
-
+	if err != nil {
+		return nil, fmt.Errorf( "AuthService Create userStorage Save: %v", err )
+	}
 	// TODO refresh and access tokens
 
 	access, err := s.generateJWT(u)

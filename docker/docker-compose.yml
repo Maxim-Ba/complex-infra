@@ -247,6 +247,7 @@ services:
       timeout: 5s
       retries: 5
 
+# TODO kafka ui
 # TODO S3
 # TODO -> to k8s
 
