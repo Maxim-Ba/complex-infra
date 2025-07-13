@@ -4,6 +4,9 @@ import (
 	"context"
 	"go-auth/internal/config"
 	"go-auth/internal/models"
+	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
 type AppAuthService interface {
@@ -21,6 +24,10 @@ type AppTokenStorage interface {
 
 type AppRedis interface {
 	Close()
+	Set(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.StatusCmd
+	Get(ctx context.Context, key string) *redis.StringCmd
+	Del(ctx context.Context, keys ...string) *redis.IntCmd
+	Pipeline() redis.Pipeliner
 }
 type AppUserStorage interface {
 	Save(user models.UserCreateReq) models.UserCreateRes

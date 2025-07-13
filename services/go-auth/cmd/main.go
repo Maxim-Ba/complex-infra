@@ -72,18 +72,18 @@ func initAppContainer() {
 	app.AppContainer = dig.New()
 
 	if err := app.AppContainer.Provide(services.AuthNew, dig.As(new(app.AppAuthService))); err != nil {
-		panic(fmt.Sprintf("auth service can not be provided %s", err.Error()))
+		panic(fmt.Sprintf("auth service can not be provided: %s", err.Error()))
 	}
 	if err := app.AppContainer.Provide(config.New, dig.As(new(app.AppConfig))); err != nil {
-		panic(fmt.Sprintf("config can not be provided %s", err.Error()))
+		panic(fmt.Sprintf("config can not be provided:%s", err.Error()))
 	}
 	if err := app.AppContainer.Provide(redis.New, dig.As(new(app.AppRedis))); err != nil {
-		panic(fmt.Sprintf("redis can not be provided %s", err.Error()))
+		panic(fmt.Sprintf("redis can not be provided: %s", err.Error()))
 	}
 	if err := app.AppContainer.Provide(storage.NewTokenStorage, dig.As(new(app.AppTokenStorage))); err != nil {
-		panic(fmt.Sprintf("token storage can not be provided %s", err.Error()))
+		panic(fmt.Sprintf("token storage can not be provided: %s", err.Error()))
 	}
 	if err := app.AppContainer.Provide(storage.NewUserStorage, dig.As(new(app.AppUserStorage))); err != nil {
-		panic(fmt.Sprintf("user storage not be provided %s", err.Error()))
+		panic(fmt.Sprintf("user storage not be provided: %s", err.Error()))
 	}
 }

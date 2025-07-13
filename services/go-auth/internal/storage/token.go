@@ -3,18 +3,17 @@ package storage
 import (
 	"context"
 	"fmt"
+	"go-auth/internal/app"
 	"go-auth/internal/models"
-
-	"github.com/redis/go-redis/v9"
 )
 
 
 type TokenStorage struct {
-		redisDB *redis.Client
+    redisDB app.AppRedis
 
 }
 
-func NewTokenStorage(redisDB *redis.Client) *TokenStorage {
+func NewTokenStorage(redisDB app.AppRedis) *TokenStorage {
 return &TokenStorage{redisDB: redisDB}}
 
 func (s *TokenStorage) SetTokens(ctx context.Context, jwt *models.TokenDto) error {

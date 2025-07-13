@@ -5,7 +5,6 @@ x-logging: &logging
     options:
       fluentd-address: "localhost:24224"
       tag: "{{.ImageName}}|{{.Name}}"
-      
 
 services:
   fluentd:
