@@ -17,9 +17,14 @@ type MockUserStorage struct {
 	mock.Mock
 }
 
-func (m *MockUserStorage) Save(user models.UserCreateReq) models.UserCreateRes {
+// Update implements app.AppUserStorage.
+func (m *MockUserStorage) Update(user models.UserCreateDto) error {
+	panic("unimplemented")
+}
+
+func (m *MockUserStorage) Save(user models.UserCreateDto) (models.UserCreateRes, error) {
 	args := m.Called(user)
-	return args.Get(0).(models.UserCreateRes)
+	return args.Get(0).(models.UserCreateRes), args.Error(1)
 }
 
 func (m *MockUserStorage) Get(user models.UserCreateDto) (*models.UserCreateRes, error) {
@@ -58,7 +63,7 @@ func TestAuthService_Create(t *testing.T) {
 			},
 			mockSetup: func(mus *MockUserStorage, mc *MockConfig) {
 				mus.On("Get", mock.Anything).Return(
-					(*models.UserCreateRes)(nil), 
+					(*models.UserCreateRes)(nil),
 					nil,
 				)
 
@@ -66,7 +71,7 @@ func TestAuthService_Create(t *testing.T) {
 					models.UserCreateRes{
 						Login: "testuser",
 						Id:    "123",
-					},
+					},nil,
 				)
 
 				mc.On("GetConfig").Return(
@@ -99,7 +104,7 @@ func TestAuthService_Create(t *testing.T) {
 					&models.UserCreateRes{
 						Login: "existing",
 						Id:    "456",
-					}, 
+					},
 					nil,
 				)
 			},
@@ -114,7 +119,7 @@ func TestAuthService_Create(t *testing.T) {
 			},
 			mockSetup: func(mus *MockUserStorage, mc *MockConfig) {
 				mus.On("Get", mock.Anything).Return(
-					(*models.UserCreateRes)(nil), 
+					(*models.UserCreateRes)(nil),
 					errors.New("database error"),
 				)
 			},
@@ -163,7 +168,6 @@ func TestAuthService_Create(t *testing.T) {
 		})
 	}
 }
-
 
 func TestAuthService_Login(t *testing.T) {
 	originalContainer := app.AppContainer

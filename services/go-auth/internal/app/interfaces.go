@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"database/sql"
 	"go-auth/internal/config"
 	"go-auth/internal/models"
 	"time"
@@ -30,7 +31,14 @@ type AppRedis interface {
 	Del(ctx context.Context, keys ...string) *redis.IntCmd
 	Pipeline() redis.Pipeliner
 }
+
 type AppUserStorage interface {
-	Save(user models.UserCreateReq) models.UserCreateRes
+	Save(user models.UserCreateDto) (models.UserCreateRes, error)
 	Get(user models.UserCreateDto) (*models.UserCreateRes, error)
+	Update(user models.UserCreateDto) error
+}
+
+type DB interface {
+	Close()
+	GetConnection() *sql.DB
 }

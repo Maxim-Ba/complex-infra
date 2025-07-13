@@ -8,6 +8,7 @@ import (
 	"go-auth/internal/router"
 	"go-auth/internal/services"
 	"go-auth/internal/storage"
+	"go-auth/pkg/db"
 	"go-auth/pkg/metrics"
 	"go-auth/pkg/redis"
 	"go-auth/pkg/tracer"
@@ -60,11 +61,11 @@ func main() {
 		slog.Error(err.Error())
 	}
 
-	if err := app.AppContainer.Invoke(func(rds *redis.Redis) {
-		rds.Close()
-	}); err != nil {
-		slog.Error(err.Error())
-	}
+	// if err := app.AppContainer.Invoke(func(rds *redis.Redis) {
+	// 	rds.Close()
+	// }); err != nil {
+	// 	slog.Error(err.Error())
+	// }
 
 }
 
@@ -76,6 +77,9 @@ func initAppContainer() {
 	}
 	if err := app.AppContainer.Provide(config.New, dig.As(new(app.AppConfig))); err != nil {
 		panic(fmt.Sprintf("config can not be provided:%s", err.Error()))
+	}
+	if err := app.AppContainer.Provide(db.New, dig.As(new(app.DB))); err != nil {
+		panic(fmt.Sprintf("database not be provided: %s", err.Error()))
 	}
 	if err := app.AppContainer.Provide(redis.New, dig.As(new(app.AppRedis))); err != nil {
 		panic(fmt.Sprintf("redis can not be provided: %s", err.Error()))

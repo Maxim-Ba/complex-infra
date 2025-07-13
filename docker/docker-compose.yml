@@ -98,6 +98,8 @@ services:
     depends_on:
       fluentd:
         condition: service_healthy
+      postgres-users:
+        condition: service_healthy
     restart: always
     <<: *logging
     networks:
@@ -110,6 +112,12 @@ services:
     environment:
       - JWT_SECRET=any
       - REDIS_ADDRESS=redis:6380
+      - POSTGRES_HOST=postgres-users
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=users_db
+      - MIGRATIONS_PATH=/usr/local/src/migrations
   jaeger:
     image: jaegertracing/all-in-one
     container_name: jaeger
@@ -220,11 +228,35 @@ services:
     environment:
       - REDIS_ADDRESS=redis:6380
 
+  postgres-users:
+    container_name: postgres-users
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: users_db
+    volumes:
+      - postgres-users-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - opensearch-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+# TODO S3
+# TODO -> to k8s
+
+
 volumes:
   opensearch-data1:
   redis-data:
   grafana-storage:
-
+  postgres-users-data:
+  
 networks:
   opensearch-net:
     driver: bridge

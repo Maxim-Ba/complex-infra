@@ -35,7 +35,7 @@ func (s AuthService) Create(user models.UserCreateReq) (*models.TokenDto, error)
 	if existingUser != nil {
 		return nil, ErrUserExists
 	}
-	u := s.userStorage.Save(user)
+	u,err := s.userStorage.Save(models.UserCreateDto{Login:user.Login, PasswordHash: pswdHash } )
 
 	// TODO refresh and access tokens
 
