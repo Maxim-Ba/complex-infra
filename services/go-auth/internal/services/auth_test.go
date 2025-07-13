@@ -163,3 +163,137 @@ func TestAuthService_Create(t *testing.T) {
 		})
 	}
 }
+
+
+func TestAuthService_Login(t *testing.T) {
+	originalContainer := app.AppContainer
+	defer func() { app.AppContainer = originalContainer }()
+
+	testContainer := dig.New()
+	app.AppContainer = testContainer
+
+	tests := []struct {
+		name          string
+		input         models.UserCreateReq
+		mockSetup     func(*MockUserStorage, *MockConfig)
+		expectedError error
+		wantToken     bool
+	}{
+		{
+			name: "successful login",
+			input: models.UserCreateReq{
+				Login:    "testuser",
+				Password: "password123",
+			},
+			mockSetup: func(mus *MockUserStorage, mc *MockConfig) {
+				pswdHash, _ := getHash("password123")
+				mus.On("Get", models.UserCreateDto{
+					Login:        "testuser",
+					PasswordHash: pswdHash,
+				}).Return(
+					&models.UserCreateRes{
+						Login: "testuser",
+						Id:    "123",
+					},
+					nil,
+				)
+
+				mc.On("GetConfig").Return(
+					&config.Config{
+						Secret: "test-secret",
+					},
+				)
+			},
+			expectedError: nil,
+			wantToken:     true,
+		},
+		{
+			name: "empty login and password",
+			input: models.UserCreateReq{
+				Login:    "",
+				Password: "",
+			},
+			mockSetup:     func(mus *MockUserStorage, mc *MockConfig) {},
+			expectedError: errors.New("login and password are required"),
+			wantToken:     false,
+		},
+		{
+			name: "user not found",
+			input: models.UserCreateReq{
+				Login:    "nonexistent",
+				Password: "password",
+			},
+			mockSetup: func(mus *MockUserStorage, mc *MockConfig) {
+				pswdHash, _ := getHash("password")
+				mus.On("Get", models.UserCreateDto{
+					Login:        "nonexistent",
+					PasswordHash: pswdHash,
+				}).Return(
+					(*models.UserCreateRes)(nil),
+					nil,
+				)
+			},
+			expectedError: ErrWrongLoginOrPassword,
+			wantToken:     false,
+		},
+		{
+			name: "error getting user",
+			input: models.UserCreateReq{
+				Login:    "erroruser",
+				Password: "password",
+			},
+			mockSetup: func(mus *MockUserStorage, mc *MockConfig) {
+				pswdHash, _ := getHash("password")
+				mus.On("Get", models.UserCreateDto{
+					Login:        "erroruser",
+					PasswordHash: pswdHash,
+				}).Return(
+					(*models.UserCreateRes)(nil),
+					errors.New("database error"),
+				)
+			},
+			expectedError: errors.New("database error"),
+			wantToken:     false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockUserStorage := &MockUserStorage{}
+			mockConfig := &MockConfig{}
+
+			tt.mockSetup(mockUserStorage, mockConfig)
+
+			// Очищаем контейнер перед каждым тестом
+			testContainer = dig.New()
+			app.AppContainer = testContainer
+
+			err := testContainer.Provide(func() app.AppConfig {
+				return mockConfig
+			})
+			assert.NoError(t, err)
+
+			service := AuthNew(mockUserStorage)
+
+			token, err := service.Login(tt.input)
+
+			if tt.expectedError != nil {
+				assert.Error(t, err)
+				assert.EqualError(t, err, tt.expectedError.Error())
+				assert.Nil(t, token)
+			} else {
+				assert.NoError(t, err)
+				if tt.wantToken {
+					assert.NotNil(t, token)
+					assert.NotEmpty(t, token.Access)
+					assert.NotEmpty(t, token.Refresh)
+				} else {
+					assert.Nil(t, token)
+				}
+			}
+
+			mockUserStorage.AssertExpectations(t)
+			mockConfig.AssertExpectations(t)
+		})
+	}
+}

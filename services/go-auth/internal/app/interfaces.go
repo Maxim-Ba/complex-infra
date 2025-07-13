@@ -11,6 +11,7 @@ import (
 
 type AppAuthService interface {
 	Create(user models.UserCreateReq) (*models.TokenDto, error)
+	Login(user models.UserCreateReq) (*models.TokenDto, error)
 }
 
 type AppConfig interface {

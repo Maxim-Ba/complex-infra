@@ -53,6 +53,38 @@ func (s AuthService) Create(user models.UserCreateReq) (*models.TokenDto, error)
 	return &jwt, nil
 }
 
+func (s AuthService) Login(user models.UserCreateReq) (*models.TokenDto, error){
+	jwt := models.TokenDto{}
+	if user.Login == "" || user.Password == "" {
+		return nil, errors.New("login and password are required")
+	}
+	pswdHash, err := getHash(user.Password)
+	if err != nil {
+		return nil, err
+	}
+	existingUser, err := s.userStorage.Get(models.UserCreateDto{Login: user.Login, PasswordHash: pswdHash})
+		if err != nil {
+		return nil, err
+	}
+	if existingUser ==nil  {
+		return nil , ErrWrongLoginOrPassword
+	}
+	// TODO refresh and access tokens
+
+	access, err := s.generateJWT(*existingUser)
+		if err != nil {
+		return nil, err
+	}
+	refresh, err := s.generateJWT(*existingUser)
+		if err != nil {
+		return nil, err
+	}
+	jwt.Access = access
+	jwt.Refresh = refresh
+	
+	return &jwt, nil
+}
+
 func (s AuthService) generateJWT(user models.UserCreateRes) (string, error) {
 	var secret string
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
