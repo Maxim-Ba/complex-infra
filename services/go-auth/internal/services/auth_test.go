@@ -123,7 +123,7 @@ func TestAuthService_Create(t *testing.T) {
 					errors.New("database error"),
 				)
 			},
-			expectedError: errors.New("database error"),
+			expectedError: errors.New("AuthService Create check existingUser: database error"),
 			wantToken:     false,
 		},
 	}
