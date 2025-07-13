@@ -112,11 +112,11 @@ func TestRegister(t *testing.T) {
 			},
 			setupMocks: func(a *MockAuthService, ts *MockTokenStorage) {
 				a.On("Create", mock.AnythingOfType("models.UserCreateReq")).
-					Return(&models.TokenDto{}, errors.New("login and password are required"))
+					Return(&models.TokenDto{}, services.ErrLoginAndPasswordAreRequired)
 			},
 
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "login and password are required",
+			expectedBody:   "Wrong login or password",
 			checkCookies:   false,
 		},
 		{

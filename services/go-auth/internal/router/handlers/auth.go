@@ -30,6 +30,10 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	jwt, err := authService.Create(u)
 	if err != nil {
 		slog.Error(err.Error())
+		if errors.Is(err, services.ErrLoginAndPasswordAreRequired){
+			http.Error(w, "Wrong login or password", http.StatusBadRequest)
+			return 
+		}
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
