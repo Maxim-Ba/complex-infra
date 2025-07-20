@@ -11,6 +11,17 @@ import (
 	"net/http"
 )
 
+// Register godoc
+// @Summary Регистрация нового пользователя
+// @Description Создает нового пользователя и возвращает JWT токены в cookies
+// @Tags Аутентификация
+// @Accept json
+// @Produce json
+// @Param input body models.UserCreateReq true "Данные для регистрации"
+// @Success 204 "Успешная регистрация, токены установлены в cookies"
+// @Failure 400 {string} string "Неверный запрос или неверные логин/пароль"
+// @Failure 500 {string} string "Внутренняя ошибка сервера"
+// @Router /register [post]
 func Register(w http.ResponseWriter, r *http.Request) {
 	var u models.UserCreateReq
 	if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
@@ -67,6 +78,16 @@ func Register(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// Logout godoc
+// @Summary Выход из системы
+// @Description Удаляет JWT токены из cookies и хранилища
+// @Tags Аутентификация
+// @Produce json
+// @Success 204 "Успешный выход, токены удалены"
+// @Failure 400 {string} string "Неверный запрос"
+// @Failure 500 {string} string "Внутренняя ошибка сервера"
+// @Security ApiKeyAuth
+// @Router /logout [get]
 func Logout(w http.ResponseWriter, r *http.Request) {
 	access, err := r.Cookie("access_token")
 	if err != nil {
@@ -120,6 +141,17 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(""))
 }
 
+// Login godoc
+// @Summary Аутентификация пользователя
+// @Description Проверяет учетные данные и возвращает JWT токены в cookies
+// @Tags Аутентификация
+// @Accept json
+// @Produce json
+// @Param input body models.UserCreateReq true "Учетные данные"
+// @Success 204 "Успешная аутентификация, токены установлены в cookies"
+// @Failure 400 {string} string "Неверный запрос или неверные логин/пароль"
+// @Failure 500 {string} string "Внутренняя ошибка сервера"
+// @Router /login [post]
 func Login(w http.ResponseWriter, r *http.Request) {
 
 	var u models.UserCreateReq
