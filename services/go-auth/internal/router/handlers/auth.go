@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"go-auth/internal/app"
+	"go-auth/internal/constants"
 	"go-auth/internal/models"
 	"go-auth/internal/services"
 	"log/slog"
@@ -38,7 +39,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.SetCookie(w, &http.Cookie{
-		Name:     "access_token",
+		Name:     constants.AccessTokenCookie,
 		Value:    jwt.Access,
 		Path:     "/",
 		MaxAge:   3600,
@@ -47,7 +48,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteStrictMode,
 	})
 	http.SetCookie(w, &http.Cookie{
-		Name:     "refresh_token",
+		Name:     constants.RefreshTokenCookie,
 		Value:    jwt.Refresh,
 		Path:     "/",
 		MaxAge:   30 * 24 * 3600, // 30 дней

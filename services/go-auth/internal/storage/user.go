@@ -80,3 +80,22 @@ func (s *UserStorage) Update(user models.UserCreateDto) error {
 
 	return nil
 }
+func (s *UserStorage) GetById(userId string) (*models.UserCreateRes, error) {
+var res models.UserCreateRes
+
+	query := `
+		SELECT id
+		FROM users
+		WHERE password_hash = $1
+	`
+
+	err := s.db.QueryRow(query, userId).Scan(&res.Id, &res.Login)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrUserNotFound
+		}
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	return &res, nil
+}

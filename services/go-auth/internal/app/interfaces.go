@@ -13,7 +13,9 @@ import (
 type AppAuthService interface {
 	Create(user models.UserCreateReq) (*models.TokenDto, error)
 	Login(user models.UserCreateReq) (*models.TokenDto, error)
+	RefreshToken(refreshToken string) (*models.TokenDto, error)
 }
+
 
 type AppConfig interface {
 	GetConfig() *config.Config
@@ -36,6 +38,7 @@ type AppUserStorage interface {
 	Save(user models.UserCreateDto) (models.UserCreateRes, error)
 	Get(user models.UserCreateDto) (*models.UserCreateRes, error)
 	Update(user models.UserCreateDto) error
+	GetById(userId string) (*models.UserCreateRes, error)
 }
 
 type DB interface {

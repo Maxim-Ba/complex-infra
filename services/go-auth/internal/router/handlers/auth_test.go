@@ -21,7 +21,11 @@ type MockAuthService struct {
 	mock.Mock
 }
 
-// Login implements app.AppAuthService.
+func (m *MockAuthService) RefreshToken(refreshToken string) (*models.TokenDto, error) {
+	args := m.Called(refreshToken)
+	return args.Get(0).(*models.TokenDto), args.Error(1)
+}
+
 func (m *MockAuthService) Login(user models.UserCreateReq) (*models.TokenDto, error) {
 	args := m.Called(user)
 	return args.Get(0).(*models.TokenDto), args.Error(1)
@@ -196,13 +200,12 @@ func TestRegister(t *testing.T) {
 	}
 }
 
-
 type LogoutTestCase struct {
-	name               string
-	setupRequest       func(*http.Request)
-	setupMocks         func(*MockTokenStorage)
-	expectedStatus     int
-	expectedBody       string
+	name                string
+	setupRequest        func(*http.Request)
+	setupMocks          func(*MockTokenStorage)
+	expectedStatus      int
+	expectedBody        string
 	checkCookiesCleared bool
 }
 
@@ -217,8 +220,8 @@ func TestLogout(t *testing.T) {
 			setupMocks: func(ts *MockTokenStorage) {
 				ts.On("RemoveToken", mock.Anything, "valid_refresh", "valid_access").Return(nil)
 			},
-			expectedStatus:     http.StatusNoContent,
-			expectedBody:       "",
+			expectedStatus:      http.StatusNoContent,
+			expectedBody:        "",
 			checkCookiesCleared: true,
 		},
 		{
@@ -226,9 +229,9 @@ func TestLogout(t *testing.T) {
 			setupRequest: func(r *http.Request) {
 				r.AddCookie(&http.Cookie{Name: "refresh_token", Value: "valid_refresh"})
 			},
-			setupMocks:         func(*MockTokenStorage) {},
-			expectedStatus:     http.StatusInternalServerError,
-			expectedBody:       "Failed to read cookie access",
+			setupMocks:          func(*MockTokenStorage) {},
+			expectedStatus:      http.StatusInternalServerError,
+			expectedBody:        "Failed to read cookie access",
 			checkCookiesCleared: false,
 		},
 		{
@@ -236,9 +239,9 @@ func TestLogout(t *testing.T) {
 			setupRequest: func(r *http.Request) {
 				r.AddCookie(&http.Cookie{Name: "access_token", Value: "valid_access"})
 			},
-			setupMocks:         func(*MockTokenStorage) {},
-			expectedStatus:     http.StatusInternalServerError,
-			expectedBody:       "Failed to read cookie refresh",
+			setupMocks:          func(*MockTokenStorage) {},
+			expectedStatus:      http.StatusInternalServerError,
+			expectedBody:        "Failed to read cookie refresh",
 			checkCookiesCleared: false,
 		},
 		{
@@ -251,8 +254,8 @@ func TestLogout(t *testing.T) {
 				ts.On("RemoveToken", mock.Anything, "valid_refresh", "valid_access").
 					Return(errors.New("storage error"))
 			},
-			expectedStatus:     http.StatusInternalServerError,
-			expectedBody:       "Failed to remove token",
+			expectedStatus:      http.StatusInternalServerError,
+			expectedBody:        "Failed to remove token",
 			checkCookiesCleared: false,
 		},
 	}
@@ -291,7 +294,7 @@ func TestLogout(t *testing.T) {
 				cookies := w.Result().Cookies()
 				accessCookie := findCookie(cookies, "access_token")
 				refreshCookie := findCookie(cookies, "refresh_token")
-				
+
 				assert.NotNil(t, accessCookie, "access_token cookie not found")
 				assert.NotNil(t, refreshCookie, "refresh_token cookie not found")
 				assert.Equal(t, "", accessCookie.Value, "access_token should be cleared")
@@ -341,9 +344,9 @@ func TestLogin(t *testing.T) {
 			},
 		},
 		{
-			name:        "InvalidRequestBody",
-			requestBody: "invalid json",
-			setupMocks:  func(*MockAuthService, *MockTokenStorage) {},
+			name:           "InvalidRequestBody",
+			requestBody:    "invalid json",
+			setupMocks:     func(*MockAuthService, *MockTokenStorage) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   "Invalid request body",
 			checkCookies:   false,
