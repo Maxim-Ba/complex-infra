@@ -3,8 +3,10 @@ package middlewares
 import (
 	"go-auth/internal/app"
 	"go-auth/internal/constants"
+	"log/slog"
 	"net/http"
 	"slices"
+	"strconv"
 	"time"
 )
 
@@ -13,12 +15,14 @@ func WithAuth(next http.Handler, authService app.AppAuthService) http.Handler {
 		// Проверяем наличие access token
 		accessTokenCookie := getCookie(r, constants.AccessTokenCookie)
 		if accessTokenCookie == nil {
+			slog.Info("WithAuth accessTokenCookie is nil")
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 
 		// Проверяем срок жизни access token
 		if !isTokenValid(accessTokenCookie) {
+			slog.Info("WithAuth accessTokenCookie is not valid")
 			// Если access token истек, проверяем refresh token
 			refreshTokenCookie := getCookie(r, constants.RefreshTokenCookie)
 			if refreshTokenCookie == nil || !isTokenValid(refreshTokenCookie) {
@@ -26,10 +30,9 @@ func WithAuth(next http.Handler, authService app.AppAuthService) http.Handler {
 				return
 			}
 
-			// Здесь должна быть логика обновления access token с помощью refresh token
-			// Например, можно отправить запрос к auth сервису для получения нового access token
 			jwt, err := authService.RefreshToken(refreshTokenCookie.Value)
 			if err != nil {
+				slog.Info("WithAuth set refressh token")
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
@@ -60,8 +63,23 @@ func WithAuth(next http.Handler, authService app.AppAuthService) http.Handler {
 func WithNoAuthOnly(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Проверяем наличие хотя бы одного из токенов
+		cookies := r.Cookies()
+		loggableCookies := make([]map[string]string, len(cookies))
+		for i, cookie := range cookies {
+			loggableCookies[i] = map[string]string{
+				"Name":     cookie.Name,
+				"Value":    cookie.Value,
+				"Path":     cookie.Path,
+				"SameSite": strconv.Itoa(int(cookie.SameSite)),
+				"Domain":   cookie.Domain,
+				// Можно добавить другие поля, если нужно (Path, Domain, Expires и т.д.)
+			}
+		}
+		slog.Info("Cookies", "cookies", loggableCookies)
 		if getCookie(r, constants.AccessTokenCookie) != nil ||
 			getCookie(r, constants.RefreshTokenCookie) != nil {
+			slog.Info("WithNoAuthOnly must not are tokens")
+
 			w.WriteHeader(http.StatusForbidden)
 			return
 		}

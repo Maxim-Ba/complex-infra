@@ -2,6 +2,7 @@ package router
 
 import (
 	"go-auth/internal/app"
+	"go-auth/internal/constants"
 	"go-auth/internal/router/handlers"
 	"go-auth/internal/router/middlewares"
 	"go-auth/pkg/metrics"
@@ -10,6 +11,8 @@ import (
 	_ "go-auth/docs"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/cors"
+
 	httpSwagger "github.com/swaggo/http-swagger"
 )
 
@@ -32,6 +35,13 @@ func New() *chi.Mux {
 	}
 	// TODO add handler middleware
 	router := chi.NewRouter()
+	router.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{"http://localhost:4200"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Content-Type", "Authorization", constants.AccessTokenCookie, constants.RefreshTokenCookie},
+		AllowCredentials: true,
+		// MaxAge:           300,
+	}))
 	router.Use(metrics.MetricsMiddleware)
 	router.Get("/handler", handlers.Handler)
 	router.Get("/error", handlers.EmitError)
@@ -42,13 +52,14 @@ func New() *chi.Mux {
 	router.Group(func(r chi.Router) {
 		r.Use(middlewares.WithNoAuthOnly)
 		r.Post("/register", handlers.Register)
+		r.Post("/login", handlers.Login)
+		r.Get("/logout", handlers.Logout)
 	})
 
 	router.Group(func(r chi.Router) {
 		r.Use(func(h http.Handler) http.Handler {
 			return middlewares.WithAuth(h, authService)
 		})
-		r.Post("/login", handlers.Login)
 		r.Get("/logout", handlers.Logout)
 	})
 

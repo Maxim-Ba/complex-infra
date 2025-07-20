@@ -1,0 +1,94 @@
+{{form.value | json}}
+<form
+  tuiAppearance="floating"
+  tuiCardLarge
+  tuiForm="m"
+  [formGroup]="form"
+  [style.max-width.rem]="32"
+  (ngSubmit)="onSubmit()"
+>
+  <header tuiHeader>
+    <h2 tuiTitle>
+      Registration form
+      <span tuiSubtitle>Tell us about yourself</span>
+    </h2>
+    <span tuiAccessories>
+      <tui-segmented>
+        <label>
+          <input
+            formControlName="basic"
+            type="radio"
+            [value]="true"
+          />
+          Sign up
+        </label>
+        <label>
+          <input
+            formControlName="basic"
+            type="radio"
+            [value]="false"
+          />
+          Sign in
+        </label>
+      </tui-segmented>
+    </span>
+  </header>
+  <tui-notification appearance="warning">
+    <h3 tuiTitle>
+      Authenticity required
+      <span tuiSubtitle>Please be honest and use your real data</span>
+    </h3>
+  </tui-notification>
+  <tui-textfield>
+    <label tuiLabel>Login</label>
+    <input
+      type="text"
+      formControlName="login"
+      placeholder="Login"
+      tuiTextfield
+    />
+  </tui-textfield>
+  <tui-error
+    formControlName="login"
+    [error]="[] | tuiFieldError | async"
+  />
+  <tui-textfield>
+    <label tuiLabel>Password</label>
+    <input
+      type="password"
+      formControlName="password"
+      placeholder="Password"
+      tuiTextfield
+    />
+  </tui-textfield>
+  <tui-error
+    formControlName="password"
+    [error]="[] | tuiFieldError | async"
+  />
+
+  <footer>
+    <button
+      (click)="onCancel()"
+      appearance="secondary"
+      tuiButton
+      type="button"
+    >
+      Cancel
+    </button>
+    <button tuiButton>
+      Submit
+    </button>
+  </footer>
+</form>
+
+
+--------------
+
+<button
+  (click)="logout()"
+  appearance="secondary"
+  tuiButton
+  type="button"
+>
+  test logout
+</button>
