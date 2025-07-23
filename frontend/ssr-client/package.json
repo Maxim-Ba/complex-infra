@@ -19,8 +19,16 @@
       }
     ]
   },
+  "lint-staged": {
+    "*.{ts,html,scss}": [
+      "npm run lint",
+      "npm run test -- --watch=false --browsers=ChromeHeadless --code-coverage"
+    ]
+  },
   "private": true,
   "dependencies": {
+    "@angular/animations": "^20.1.2",
+    "@angular/cdk": "^20.1.2",
     "@angular/common": "^20.1.0",
     "@angular/compiler": "^20.1.0",
     "@angular/core": "^20.1.0",
@@ -29,14 +37,28 @@
     "@angular/platform-server": "^20.1.0",
     "@angular/router": "^20.1.0",
     "@angular/ssr": "^20.1.1",
+    "@maskito/angular": "^3.10.1",
+    "@maskito/core": "^3.10.1",
+    "@maskito/kit": "^3.10.1",
+    "@maskito/phone": "^3.10.1",
+    "@ng-web-apis/common": "^4.12.0",
+    "@ng-web-apis/intersection-observer": "^4.12.0",
+    "@ng-web-apis/mutation-observer": "^4.12.0",
+    "@ng-web-apis/platform": "^4.12.0",
+    "@ng-web-apis/resize-observer": "^4.12.0",
+    "@ng-web-apis/screen-orientation": "^4.12.0",
     "@ng-web-apis/universal": "^4.12.0",
     "@taiga-ui/cdk": "^4.45.0",
     "@taiga-ui/core": "^4.45.0",
     "@taiga-ui/event-plugins": "^4.0.2",
+    "@taiga-ui/i18n": "^4.46.0",
     "@taiga-ui/icons": "^4.45.0",
     "@taiga-ui/kit": "^4.45.0",
     "@taiga-ui/layout": "^4.45.0",
+    "@taiga-ui/polymorpheus": "^4.9.0",
     "express": "^5.1.0",
+    "libphonenumber-js": "^1.12.10",
+    "maskito": "^0.0.2",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },
@@ -46,7 +68,8 @@
     "@angular/compiler-cli": "^20.1.0",
     "@types/express": "^5.0.1",
     "@types/jasmine": "~5.1.0",
-    "@types/node": "^20.17.19",
+    "@types/node": "^24.1.0",
+    "husky": "^9.1.7",
     "jasmine-core": "~5.8.0",
     "karma": "~6.4.0",
     "karma-chrome-launcher": "~3.2.0",
@@ -55,6 +78,7 @@
     "karma-jasmine-html-reporter": "~2.1.0",
     "less": "^4.4.0",
     "less-loader": "^12.3.0",
+    "lint-staged": "^16.1.2",
     "typescript": "~5.8.2"
   }
 }

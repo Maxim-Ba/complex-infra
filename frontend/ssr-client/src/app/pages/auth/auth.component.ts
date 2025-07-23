@@ -43,7 +43,11 @@ export class Auth {
   }
   apiService = inject(ApiService);
   onCancel() {
-    this.form.reset();
+    this.form.reset({
+      login: '',
+      password: '',
+      basic: true,
+    });
   }
   onSubmit() {
     this.apiService[this.form.value.basic ? 'register' : 'login']({
@@ -51,7 +55,7 @@ export class Auth {
       password: this.form.value.password || '',
     }).subscribe();
   }
-  protected readonly form = new FormGroup({
+  readonly form = new FormGroup({
     login: new FormControl('', Validators.required),
     password: new FormControl('', Validators.required),
     basic: new FormControl(true),
