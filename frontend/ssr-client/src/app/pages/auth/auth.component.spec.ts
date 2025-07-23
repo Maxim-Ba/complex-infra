@@ -61,7 +61,7 @@ describe('AuthComponent', () => {
   });
 
   it('should call register when basic is true and form is submitted', () => {
-    spyOn(apiService, 'register').and.returnValue(of({}));
+    spyOn(apiService, 'register').and.returnValue(of(null));
     component.form.patchValue({
       login: 'testuser',
       password: 'testpass',
@@ -77,7 +77,7 @@ describe('AuthComponent', () => {
   });
 
   it('should call login when basic is false and form is submitted', () => {
-    spyOn(apiService, 'login').and.returnValue(of({}));
+    spyOn(apiService, 'login').and.returnValue(of(null));
     component.form.patchValue({
       login: 'testuser',
       password: 'testpass',
