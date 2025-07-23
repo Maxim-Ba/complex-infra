@@ -19,12 +19,7 @@
       }
     ]
   },
-  "lint-staged": {
-    "*.{ts,html,scss}": [
-      "npm run lint",
-      "npm run test -- --watch=false --browsers=ChromeHeadless --code-coverage"
-    ]
-  },
+
   "private": true,
   "dependencies": {
     "@angular/animations": "^20.1.2",
@@ -78,7 +73,6 @@
     "karma-jasmine-html-reporter": "~2.1.0",
     "less": "^4.4.0",
     "less-loader": "^12.3.0",
-    "lint-staged": "^16.1.2",
     "typescript": "~5.8.2"
   }
 }
