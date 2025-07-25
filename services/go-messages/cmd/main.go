@@ -1,60 +1,51 @@
+// Package main реализует сервис для обработки сообщений из Kafka.
+//
+// Сервис предоставляет:
+// - HTTP API для мониторинга состояния сервиса
+// - Тестовые эндпоинты для проверки работы Producer/Consumer Kafka
+// - Механизм graceful shutdown при получении сигналов завершения
+//
+// Основные компоненты:
+// - Kafka Producer - отправка тестовых сообщений
+// - Kafka Consumer - чтение и обработка сообщений
+// - HTTP Server - REST API для взаимодействия
 package main
 
 import (
 	"errors"
 	"fmt"
-	"go-messages/pkg/kafka"
+	"go-messages/cmd/wire"
+	"go-messages/internal/router"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-
-	"github.com/julienschmidt/httprouter"
 )
+
+
 
 func main() {
 	fmt.Println("start go-messages")
 	exit := make(chan os.Signal, 1)
 	signal.Notify(exit, os.Interrupt, syscall.SIGTERM)
-
+	
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		AddSource: true,
 		Level:     slog.LevelDebug,
 	})))
 
-	// Инициализация продюсера и консьюмера
-	p := kafka.NewProducer()
 
-	c := kafka.NewConsumer()
+	deps:= wire.Initialize()
+	r:= router.New(deps.KafkaHendler)
 
 	// Запуск консьюмера в горутине
-	go c.StartRead()
+	go deps.Consumer.StartRead()
 
-	router := httprouter.New()
-
-	router.GET("/", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		w.Write([]byte("Service is running"))
-	})
-
-	// Эндпоинт для проверки producer
-	router.GET("/produce", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		err := p.ProduceTest()
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Producer error: %v", err), http.StatusInternalServerError)
-			return
-		}
-		w.Write([]byte("Message produced successfully"))
-	})
-
-	// Эндпоинт для проверки consumer
-	router.GET("/consume", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		w.Write([]byte("Consumer is running (check logs for received messages)"))
-	})
-
+	
 	httpServer := &http.Server{
 		Addr:    ":8080",
-		Handler: router,
+		Handler: r,
 	}
 
 	fmt.Println("Server started at :8080")
@@ -72,7 +63,7 @@ func main() {
 	if err := httpServer.Close(); err != nil {
 		slog.Error(err.Error())
 	}
-	c.Close()
-	p.Close()
+	deps.Consumer.Close()
+	deps.Producer.Close()
 
 }

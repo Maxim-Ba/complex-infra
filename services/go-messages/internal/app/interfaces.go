@@ -1,0 +1,33 @@
+package app
+
+import (
+	"context"
+	"database/sql"
+	"go-messages/internal/config"
+
+	"github.com/redis/go-redis/v9"
+)
+
+type AppConfig interface {
+	GetConfig() *config.Config
+}
+
+type AppRedis interface {
+	Close()
+	Get(ctx context.Context, key string) *redis.StringCmd
+}
+
+type DB interface {
+	Close()
+	GetConnection() *sql.DB
+}
+
+type KProducer interface {
+	ProduceTest() error
+	Close()
+}
+
+type KConsumer interface {
+	StartRead()
+	Close()
+}

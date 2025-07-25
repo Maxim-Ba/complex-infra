@@ -1,6 +1,7 @@
 package kafka
 
 import (
+	"go-messages/internal/app"
 	"log"
 	"log/slog"
 
@@ -13,13 +14,13 @@ type Producer struct {
 var producer sarama.SyncProducer
 
 // TODO заменить логер
-func NewProducer() *Producer {
+func NewProducer(cfg app.AppConfig) *Producer {
 	config := sarama.NewConfig()
 	config.Producer.Return.Successes = true
 	config.Producer.RequiredAcks = sarama.WaitForAll
 	config.Producer.Retry.Max = 5
 
-	brokers := []string{"kafka:9092"}
+	brokers := []string{cfg.GetConfig().KafkaAddr}
 
 	p, err := sarama.NewSyncProducer(brokers, config)
 	if err != nil {
@@ -36,7 +37,7 @@ func (p Producer) Close() {
 	}
 
 }
-func (p Producer) ProduceTest() error{
+func (p Producer) ProduceTest() error {
 	topic := "test_topic"
 	msg := &sarama.ProducerMessage{
 		Topic: topic,
@@ -49,5 +50,5 @@ func (p Producer) ProduceTest() error{
 	}
 
 	log.Printf("Message sent to partition %d at offset %d", partition, offset)
-return  nil
+	return nil
 }

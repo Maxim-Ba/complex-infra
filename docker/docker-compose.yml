@@ -1,18 +1,21 @@
-
 x-logging: &logging
   logging:
     driver: "fluentd"
     options:
       fluentd-address: "localhost:24224"
       tag: "{{.ImageName}}|{{.Name}}"
-
+x-prometheus: &prometheus-labels
+  labels:
+    - "prometheus.scrape=true"
+    - "prometheus.port=8081"
+    - "prometheus.path=/metrics"
 services:
   fluentd:
-    build: 
+    build:
       context: ../observ/fluentd/docker
       dockerfile: ./Dockerfile
     container_name: fluentd
-    volumes: 
+    volumes:
       - ../observ/fluentd/conf:/fluentd/etc
     depends_on:
       opensearch:
@@ -23,7 +26,7 @@ services:
       - "24224:24224"
       - "24224:24224/udp"
       - "24225:24225"
-    networks:  
+    networks:
       - opensearch-net
     restart: always
     healthcheck:
@@ -32,9 +35,9 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
-    
+
   opensearch:
-    image: opensearchproject/opensearch:latest  
+    image: opensearchproject/opensearch:latest
     container_name: opensearch-node1
     environment:
       - cluster.name=opensearch-cluster
@@ -61,40 +64,47 @@ services:
     networks:
       - opensearch-net
     healthcheck:
-      test: [
-        "CMD-SHELL",
-        "curl -sSf http://localhost:9200/_cluster/health | grep -qE '\"status\":\"(green|yellow)\"'"
-      ]
+      test:
+        [
+          "CMD-SHELL",
+          'curl -sSf http://localhost:9200/_cluster/health | grep -qE ''"status":"(green|yellow)"''',
+        ]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 40s  # Даем OpenSearch время на запуск
+      start_period: 40s # Даем OpenSearch время на запуск
   opensearch-dashboards:
-      container_name: opensearch-dashboards
-      image: opensearchproject/opensearch-dashboards:latest # Make sure the version of opensearch-dashboards matches the version of opensearch installed on other nodes
-      ports:
-        - 5601:5601 # Map host port 5601 to container port 5601
-      expose:
-        - "5601" # Expose port 5601 for web access to OpenSearch Dashboards
-      environment:
-        OPENSEARCH_HOSTS: http://opensearch-node1:9200 # Define the OpenSearch nodes that OpenSearch Dashboards will query
-        DISABLE_SECURITY_DASHBOARDS_PLUGIN: true
-      restart: always
-      networks:
-        - opensearch-net
-      depends_on:
-        opensearch:
-          condition: service_healthy
-  go-auth:    
+    container_name: opensearch-dashboards
+    image: opensearchproject/opensearch-dashboards:latest # Make sure the version of opensearch-dashboards matches the version of opensearch installed on other nodes
+    ports:
+      - 5601:5601 # Map host port 5601 to container port 5601
+    expose:
+      - "5601" # Expose port 5601 for web access to OpenSearch Dashboards
+    environment:
+      OPENSEARCH_HOSTS: http://opensearch-node1:9200 # Define the OpenSearch nodes that OpenSearch Dashboards will query
+      DISABLE_SECURITY_DASHBOARDS_PLUGIN: true
+    restart: always
+    networks:
+      - opensearch-net
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:5601/api/status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  go-auth:
     container_name: go-auth
     build:
       context: ../services/go-auth
       dockerfile: ./docker/Dockerfile
-    volumes: 
+    volumes:
       - ../services/go-auth/:/usr/local/src/
-    ports: 
+    ports:
       - "8080:8080"
-      - "8081:8081"  # порт для метрик 
+      - "8081:8081" # порт для метрик
     depends_on:
       fluentd:
         condition: service_healthy
@@ -123,8 +133,8 @@ services:
     container_name: jaeger
 
     ports:
-      - "4317:4317"   # OTLP gRPC
-      - "4318:4318"   # OTLP HTTP
+      - "4317:4317" # OTLP gRPC
+      - "4318:4318" # OTLP HTTP
       - "14268:14268" # Thrift HTTP (для обратной совместимости)
       - "16686:16686" # UI
     environment:
@@ -133,6 +143,7 @@ services:
       - opensearch-net
 
   redis:
+    container_name: redis
     restart: on-failure
     image: "redis:latest"
     command: redis-server --port 6380 --save 60 1 --appendonly yes
@@ -144,6 +155,24 @@ services:
       - redis-data:/data
     networks:
       - opensearch-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "6380", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  redis-insight:
+    image: redis/redisinsight:latest
+    container_name: redis-insight
+    ports:
+      - "5540:5540"
+    volumes:
+      - redisinsight-data:/db
+    networks:
+      - opensearch-net
+    depends_on:
+      - redis
+    restart: always
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
@@ -168,7 +197,7 @@ services:
     volumes:
       - ../observ/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
+      - "--config.file=/etc/prometheus/prometheus.yml"
     depends_on:
       - go-auth
     networks:
@@ -179,7 +208,7 @@ services:
     container_name: kafka
     ports:
       - "9092:9092"
-      - "9093:9093" 
+      - "9093:9093"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
@@ -187,7 +216,7 @@ services:
       KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
       KAFKA_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093"
       KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
-      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"  
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
 
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
       CLUSTER_ID: BKf8e5R0Q1mihueYSeGK2w
@@ -201,16 +230,31 @@ services:
       timeout: 5s
       retries: 3
 
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8082:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: "local"
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: "kafka:9092"
+    networks:
+      - opensearch-net
+    depends_on:
+      kafka:
+        condition: service_healthy
+    restart: always
+
   go-messages:
     container_name: go-messages
     build:
       context: ../services/go-messages
       dockerfile: ./docker/Dockerfile
-    volumes: 
+    volumes:
       - ../services/go-messages/:/usr/local/src/
-    ports: 
+    ports:
       - "8084:8080"
-      - "8085:8081"  # порт для метрик 
+      - "8085:8081" # порт для метрик
     depends_on:
       fluentd:
         condition: service_healthy
@@ -227,6 +271,7 @@ services:
       - "prometheus.path=/metrics"
     environment:
       - REDIS_ADDRESS=redis:6380
+      - KAFKA_ADDRESS=kafka:9092
 
   postgres-users:
     container_name: postgres-users
@@ -247,18 +292,16 @@ services:
       timeout: 5s
       retries: 5
 
-# TODO kafka ui
 # TODO S3
 # TODO -> to k8s
-
 
 volumes:
   opensearch-data1:
   redis-data:
   grafana-storage:
   postgres-users-data:
-  
+  redisinsight-data: 
+
 networks:
   opensearch-net:
     driver: bridge
-
