@@ -9,22 +9,30 @@ package wire
 import (
 	"go-messages/internal/config"
 	"go-messages/internal/handlers"
+	"go-messages/internal/services"
 	"go-messages/pkg/kafka"
 )
 
 // Injectors from wire.go:
 
-func Initialize() *Dependenсies {
+func Initialize() (*Dependenсies, error) {
 	configConfig := config.New()
 	producer := kafka.NewProducer(configConfig)
-	consumer := kafka.NewConsumer(configConfig)
+	messageService, err := services.New()
+	if err != nil {
+		return nil, err
+	}
+	consumer, err := kafka.NewConsumer(configConfig, messageService)
+	if err != nil {
+		return nil, err
+	}
 	kafkaHendler := handlers.InitKafkaHandlers(consumer, producer)
 	dependenсies := &Dependenсies{
 		Producer:     producer,
 		Consumer:     consumer,
 		KafkaHendler: kafkaHendler,
 	}
-	return dependenсies
+	return dependenсies, nil
 }
 
 // wire.go:

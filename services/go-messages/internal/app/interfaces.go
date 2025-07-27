@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"go-messages/internal/config"
+	"go-messages/internal/models"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -28,6 +29,10 @@ type KProducer interface {
 }
 
 type KConsumer interface {
-	StartRead()
+	StartRead(topics []string)
 	Close()
+}
+
+type MessageService interface {
+	HandleMessage(m models.MessageDTO) error
 }

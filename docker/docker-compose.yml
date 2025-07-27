@@ -210,6 +210,10 @@ services:
       - "9092:9092"
       - "9093:9093"
     environment:
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"  # Критично для single-node!
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"  # Для транзакций
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"            # Минимальное число in-sync реплик
+      KAFKA_DEFAULT_REPLICATION_FACTOR: "1"               # Для всех новых топиков
       KAFKA_BROKER_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_NODE_ID: 1
@@ -217,7 +221,7 @@ services:
       KAFKA_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093"
       KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
       KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
-
+      # KAFKA_PROCESS_ROLES: "broker"
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
       CLUSTER_ID: BKf8e5R0Q1mihueYSeGK2w
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
@@ -272,6 +276,8 @@ services:
     environment:
       - REDIS_ADDRESS=redis:6380
       - KAFKA_ADDRESS=kafka:9092
+      - KAFKA_BROKERS=kafka:9092
+      - KAFKA_GROUP_ID=message-consumers
 
   postgres-users:
     container_name: postgres-users

@@ -1,64 +1,129 @@
 package kafka
 
 import (
-	"fmt"
+	"context"
 	"go-messages/internal/app"
-	"log"
+	"go-messages/internal/models"
 	"log/slog"
 	"os"
 	"os/signal"
+	"sync"
 
 	"github.com/IBM/sarama"
 )
 
 type Consumer struct {
+	consumerGroup sarama.ConsumerGroup
+	handler       app.MessageService
+	ready         chan bool
 }
 
-var partitionConsumer sarama.PartitionConsumer
-var consumer sarama.Consumer
 
-func NewConsumer(cfg app.AppConfig) *Consumer {
+func NewConsumer(cfg app.AppConfig, handler app.MessageService) (*Consumer, error) {
 	config := sarama.NewConfig()
+	config.Version = sarama.V2_8_0_0 
 	config.Consumer.Return.Errors = true
+	c := cfg.GetConfig()
 
-	brokers := []string{cfg.GetConfig().KafkaAddr}
+	// Настройка ручного управления offset'ами
+	config.Consumer.Offsets.AutoCommit.Enable = false     // Отключаем авто-коммит
+	config.Consumer.Offsets.Initial = sarama.OffsetNewest // Начинаем чтение с новых сообщений
 
-	consumer, err := sarama.NewConsumer(brokers, config)
+	consumerGroup, err := sarama.NewConsumerGroup(c.KafkaBrokers, c.KafkaGroupId, config)
 	if err != nil {
-		log.Fatalf("Failed to create consumer: %v", err)
+		return nil, err
 	}
 
-	topic := "test_topic"
-	c, err := consumer.ConsumePartition(topic, 0, sarama.OffsetOldest)
-	if err != nil {
-		log.Fatalf("Failed to consume partition: %v", err)
-	}
-	partitionConsumer = c
-
-	return &Consumer{}
+	return &Consumer{
+		consumerGroup: consumerGroup,
+		handler:       handler,
+		ready:         make(chan bool),
+	}, nil
 }
 
 func (c Consumer) Close() {
-	if err := consumer.Close(); err != nil {
+	if err := c.consumerGroup.Close(); err != nil {
 		slog.Error(err.Error())
 	}
 
 }
 
-func (c Consumer) StartRead() {
-	// Обработка сигналов для graceful shutdown
-	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, os.Interrupt)
-	// Чтение сообщений
-	for {
-		select {
-		case msg := <-partitionConsumer.Messages():
-			slog.Info(fmt.Sprintf("Received message: %s (Partition: %d, Offset: %d)",
-				string(msg.Value), msg.Partition, msg.Offset))
-		case err := <-partitionConsumer.Errors():
-			slog.Error(err.Error())
-		case <-signals:
-			return
+func (c Consumer) StartRead(topics []string) {
+	ctx, cancel := context.WithCancel(context.Background())
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+		for {
+			// Запускаем потребление сообщений
+			if err := c.consumerGroup.Consume(ctx, topics, &c); err != nil {
+				slog.Error("Error from consumer", "error", err)
+			}
+
+			// Проверяем, не завершен ли контекст
+			if ctx.Err() != nil {
+				return
+			}
+			c.ready = make(chan bool)
 		}
+	}()
+
+	// Ожидаем, пока потребитель не будет готов
+	<-c.ready
+	slog.Info("Sarama consumer up and running...")
+
+	sigterm := make(chan os.Signal, 1)
+	signal.Notify(sigterm, os.Interrupt)
+
+	select {
+	case <-ctx.Done():
+		slog.Info("Terminating: context cancelled")
+	case <-sigterm:
+		slog.Info("Terminating: via signal")
 	}
+	cancel()
+	wg.Wait()
+
+	if err := c.consumerGroup.Close(); err != nil {
+		slog.Error("Error closing consumer", "error", err)
+	}
+}
+
+// Setup вызывается при начале новой сессии.
+func (c *Consumer) Setup(sarama.ConsumerGroupSession) error {
+	close(c.ready)
+	return nil
+}
+
+// Cleanup вызывается при завершении сессии.
+func (c *Consumer) Cleanup(sarama.ConsumerGroupSession) error {
+	return nil
+}
+
+// ConsumeClaim обрабатывает сообщения из партиции.
+func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
+	for msg := range claim.Messages() {
+		slog.Info("New message received",
+			"topic", msg.Topic,
+			"partition", msg.Partition,
+			"offset", msg.Offset,
+			"value", string(msg.Value),
+		)
+		m := models.MessageDTO{
+			Payload:  string(msg.Value),
+			Id:       "TODO CREATE ID",
+			Producer: "TODO CREATE PRODUCER",
+		}
+		// Обрабатываем сообщение
+		if err := c.handler.HandleMessage(m); err != nil {
+			slog.Error("Failed to handle message", "error", err)
+			continue // Не подтверждаем offset при ошибке
+		}
+
+		// Вручную подтверждаем успешную обработку
+		session.MarkMessage(msg, "")
+		session.Commit() // Явный коммит
+	}
+	return nil
 }

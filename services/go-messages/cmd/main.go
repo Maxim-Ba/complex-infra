@@ -36,11 +36,14 @@ func main() {
 	})))
 
 
-	deps:= wire.Initialize()
+	deps, err:= wire.Initialize()
+	if err != nil {
+		panic(fmt.Sprintf("Error on wire.Initialize() %v", err))
+	}
 	r:= router.New(deps.KafkaHendler)
 
 	// Запуск консьюмера в горутине
-	go deps.Consumer.StartRead()
+	go deps.Consumer.StartRead([]string{"messages"})
 
 	
 	httpServer := &http.Server{
@@ -51,11 +54,10 @@ func main() {
 	fmt.Println("Server started at :8080")
 	go func() {
 		if err := httpServer.ListenAndServe(); err != nil {
-			slog.Error(err.Error())
 			if errors.Is(err, http.ErrServerClosed) {
 				return
 			}
-			panic(err)
+			panic(fmt.Sprintf("Error on httpServer.ListenAndServe() %v", err))
 		}
 	}()
 	<-exit
