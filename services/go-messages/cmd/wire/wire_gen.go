@@ -7,10 +7,12 @@
 package wire
 
 import (
+	"go-messages/internal/app"
 	"go-messages/internal/config"
 	"go-messages/internal/handlers"
 	"go-messages/internal/services"
 	"go-messages/pkg/kafka"
+	"go-messages/pkg/mongo"
 )
 
 // Injectors from wire.go:
@@ -18,7 +20,11 @@ import (
 func Initialize() (*Dependenсies, error) {
 	configConfig := config.New()
 	producer := kafka.NewProducer(configConfig)
-	messageService, err := services.New()
+	mongoRepository, err := mongo.New(configConfig)
+	if err != nil {
+		return nil, err
+	}
+	messageService, err := services.New(mongoRepository)
 	if err != nil {
 		return nil, err
 	}
@@ -28,9 +34,10 @@ func Initialize() (*Dependenсies, error) {
 	}
 	kafkaHendler := handlers.InitKafkaHandlers(consumer, producer)
 	dependenсies := &Dependenсies{
-		Producer:     producer,
-		Consumer:     consumer,
-		KafkaHendler: kafkaHendler,
+		Producer:        producer,
+		Consumer:        consumer,
+		MongoRepository: mongoRepository,
+		KafkaHendler:    kafkaHendler,
 	}
 	return dependenсies, nil
 }
@@ -38,7 +45,8 @@ func Initialize() (*Dependenсies, error) {
 // wire.go:
 
 type Dependenсies struct {
-	Producer     *kafka.Producer
-	Consumer     *kafka.Consumer
-	KafkaHendler *handlers.KafkaHendler
+	Producer        app.KProducer
+	Consumer        app.KConsumer
+	MongoRepository app.MongoRepository
+	KafkaHendler    *handlers.KafkaHendler
 }

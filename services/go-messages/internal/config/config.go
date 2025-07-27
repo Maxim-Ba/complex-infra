@@ -5,14 +5,17 @@ import (
 )
 
 type Config struct {
-	Secret       string
-	RedisAddr    string
-	MetricsAddr  string
-	ServerAddr   string
-	JaegerAddr   string
-	KafkaAddr    string
-	KafkaBrokers []string
-	KafkaGroupId string
+	Secret            string
+	RedisAddr         string
+	MetricsAddr       string
+	ServerAddr        string
+	JaegerAddr        string
+	KafkaAddr         string
+	KafkaBrokers      []string
+	KafkaGroupId      string
+	MongoDBURI        string
+	MongoDBDatabase   string
+	MongoDBCollection string
 }
 
 func New() *Config {
@@ -29,6 +32,9 @@ func New() *Config {
 		KafkaAddr:    cfg.KafkaAddr,
 		KafkaBrokers: strings.Split(cfg.KafkaBrokers, ","),
 		KafkaGroupId: cfg.KafkaGroupId,
+		MongoDBURI: cfg.MongoDBURI,
+		MongoDBDatabase: cfg.MongoDBDatabase,
+		MongoDBCollection: "messages",
 	}
 }
 func (cfg *Config) GetConfig() *Config {

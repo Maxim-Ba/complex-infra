@@ -12,6 +12,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"go-messages/cmd/wire"
@@ -21,31 +22,28 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
-
-
 
 func main() {
 	fmt.Println("start go-messages")
 	exit := make(chan os.Signal, 1)
 	signal.Notify(exit, os.Interrupt, syscall.SIGTERM)
-	
+
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		AddSource: true,
 		Level:     slog.LevelDebug,
 	})))
 
-
-	deps, err:= wire.Initialize()
+	deps, err := wire.Initialize()
 	if err != nil {
 		panic(fmt.Sprintf("Error on wire.Initialize() %v", err))
 	}
-	r:= router.New(deps.KafkaHendler)
+	r := router.New(deps.KafkaHendler)
 
 	// Запуск консьюмера в горутине
 	go deps.Consumer.StartRead([]string{"messages"})
 
-	
 	httpServer := &http.Server{
 		Addr:    ":8080",
 		Handler: r,
@@ -67,5 +65,9 @@ func main() {
 	}
 	deps.Consumer.Close()
 	deps.Producer.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	deps.MongoRepository.Close(ctx)
 
 }

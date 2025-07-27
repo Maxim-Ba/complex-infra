@@ -116,7 +116,7 @@ func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 			Producer: "TODO CREATE PRODUCER",
 		}
 		// Обрабатываем сообщение
-		if err := c.handler.HandleMessage(m); err != nil {
+		if err := c.handler.HandleMessage(session.Context(), m); err != nil {
 			slog.Error("Failed to handle message", "error", err)
 			continue // Не подтверждаем offset при ошибке
 		}

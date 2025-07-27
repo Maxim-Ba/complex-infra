@@ -9,14 +9,16 @@ import (
 	"go-messages/internal/handlers"
 	"go-messages/internal/services"
 	"go-messages/pkg/kafka"
+	"go-messages/pkg/mongo"
 
 	"github.com/google/wire"
 )
 
 type Dependenсies struct {
-	Producer  *kafka.Producer
-	Consumer *kafka.Consumer
-	KafkaHendler  *handlers.KafkaHendler
+	Producer     app.KProducer
+	Consumer     app.KConsumer
+	MongoRepository app.MongoRepository
+	KafkaHendler *handlers.KafkaHendler
 }
 
 func Initialize() (*Dependenсies, error) {
@@ -27,8 +29,10 @@ func Initialize() (*Dependenсies, error) {
 		wire.Bind(new(app.KProducer), new(*kafka.Producer)),
 		kafka.NewConsumer,
 		wire.Bind(new(app.KConsumer), new(*kafka.Consumer)),
+		mongo.New,
+		wire.Bind(new(app.MongoRepository), new(*mongo.MongoRepository)),
 		services.New,
-				wire.Bind(new(app.MessageService), new(*services.MessageService)),
+		wire.Bind(new(app.MessageService), new(*services.MessageService)),
 
 		handlers.InitKafkaHandlers,
 		wire.Struct(new(Dependenсies), "*"),

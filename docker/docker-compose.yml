@@ -264,6 +264,8 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
+      mongodb:
+        condition: service_healthy
     restart: always
     <<: *logging
     networks:
@@ -278,7 +280,8 @@ services:
       - KAFKA_ADDRESS=kafka:9092
       - KAFKA_BROKERS=kafka:9092
       - KAFKA_GROUP_ID=message-consumers
-
+      - MONGODB_URI=mongodb://root:example@mongodb:27017
+      - MONGODB_DATABASE=messages_db
   postgres-users:
     container_name: postgres-users
     image: postgres:latest
@@ -297,9 +300,43 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    volumes:
+      - mongodb-data:/data/db
+    ports:
+      - "27017:27017"
+    networks:
+      - opensearch-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
+  mongo-express:
+    image: mongo-express
+    container_name: mongo-express
+    ports:
+      - "8083:8081" 
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongodb
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: example
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: admin
+    depends_on:
+      - mongodb
+    networks:
+      - opensearch-net
 # TODO S3
 # TODO -> to k8s
+# TODO Gateway
 
 volumes:
   opensearch-data1:
@@ -307,6 +344,7 @@ volumes:
   grafana-storage:
   postgres-users-data:
   redisinsight-data: 
+  mongodb-data:
 
 networks:
   opensearch-net:
