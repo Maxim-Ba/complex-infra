@@ -56,46 +56,80 @@ func (r *MongoRepository) Close(ctx context.Context) error {
 }
 
 func (r *MongoRepository) SaveMessage(ctx context.Context, message models.MessageDTO) error {
-	_, err := r.collection.InsertOne(ctx, bson.M{
-		"id":        message.Id,
-		"producer":  message.Producer,
-		"payload":   message.Payload,
-		"createdAt": time.Now(),
-	})
-	if err != nil {
-		return fmt.Errorf("failed to insert message: %w", err)
-	}
-	return nil
+    // Устанавливаем текущее время, если оно не задано
+    if message.CreatedAt.IsZero() {
+			// TODO делать это на стороне монго "createdAt": bson.M{"$currentDate": bson.M{"$type": "date"}}
+        message.CreatedAt = time.Now()
+    }
+
+    filter := bson.M{fmt.Sprintf("groups.%s", message.Group): bson.M{"$exists": true}}
+    update := bson.M{
+        "$push": bson.M{
+            fmt.Sprintf("groups.%s", message.Group): message,
+        },
+    }
+
+    // Пытаемся добавить в существующую группу
+    result, err := r.collection.UpdateOne(ctx, filter, update)
+    if err != nil {
+        return fmt.Errorf("failed to update message: %w", err)
+    }
+
+    // Создаем новую группу при необходимости
+    if result.MatchedCount == 0 {
+        update = bson.M{
+            "$set": bson.M{
+                fmt.Sprintf("groups.%s", message.Group): []models.MessageDTO{message},
+            },
+        }
+        _, err = r.collection.UpdateOne(ctx, bson.M{}, update, options.Update().SetUpsert(true))
+        if err != nil {
+            return fmt.Errorf("failed to create new group: %w", err)
+        }
+    }
+
+    return nil
 }
 
-func (r *MongoRepository) GetMessages(ctx context.Context) ([]models.MessageDTO, error) {
-	cursor, err := r.collection.Find(ctx, bson.M{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to find messages: %w", err)
-	}
-	defer cursor.Close(ctx)
 
-	var messages []models.MessageDTO
-	for cursor.Next(ctx) {
-		var result struct {
-			Id       string `bson:"id"`
-			Producer string `bson:"producer"`
-			Payload  string `bson:"payload"`
-		}
-		if err := cursor.Decode(&result); err != nil {
-			slog.Error("Failed to decode message", "error", err)
-			continue
-		}
-		messages = append(messages, models.MessageDTO{
-			Id:       result.Id,
-			Producer: result.Producer,
-			Payload:  result.Payload,
-		})
-	}
 
-	if err := cursor.Err(); err != nil {
-		return nil, fmt.Errorf("cursor error: %w", err)
-	}
+func (r *MongoRepository) GetMessagesByGroup(ctx context.Context, req models.RequestMessages) ([]models.MessageDTO, error) {
+    var result struct {
+        Groups map[string][]models.MessageDTO `bson:"groups"`
+    }
 
-	return messages, nil
+    err := r.collection.FindOne(ctx, bson.M{
+        fmt.Sprintf("groups.%s", req.GroupiD): bson.M{"$exists": true},
+    }).Decode(&result)
+    if err != nil {
+        if err == mongo.ErrNoDocuments {
+            return []models.MessageDTO{}, nil
+        }
+        return nil, fmt.Errorf("failed to find group messages: %w", err)
+    }
+
+    messages := result.Groups[req.GroupiD]
+    
+    start := int(req.Offset)
+    if start < 0 {
+        start = 0
+    }
+    
+    end := start + int(req.Count)
+    if end > len(messages) {
+        end = len(messages)
+    }
+    
+    // Если запрошено больше, чем есть, или неверные параметры - возвращаем пустой массив
+    if start >= len(messages) || req.Count <= 0 {
+        return []models.MessageDTO{}, nil
+    }
+    
+    // Возвращаем срез сообщений в обратном порядке (новые первыми)
+    reversed := make([]models.MessageDTO, len(messages))
+    for i, j := 0, len(messages)-1; j >= 0; i, j = i+1, j-1 {
+        reversed[i] = messages[j]
+    }
+    
+    return reversed[start:end], nil
 }

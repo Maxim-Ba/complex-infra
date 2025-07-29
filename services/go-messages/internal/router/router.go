@@ -6,10 +6,11 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 )
-func New(kh *handlers.KafkaHendler)*httprouter.Router{
+
+func New(kh *handlers.KafkaHendler, mh *handlers.MessageHandler) *httprouter.Router {
 
 	router := httprouter.New()
-	
+
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		w.Write([]byte("Service is running"))
 	})
@@ -19,6 +20,7 @@ func New(kh *handlers.KafkaHendler)*httprouter.Router{
 
 	// Эндпоинт для проверки consumer
 	router.GET("/consume", kh.Consume)
+
+	router.GET("/messages/:groupID", mh.Get)
 	return router
 }
-	

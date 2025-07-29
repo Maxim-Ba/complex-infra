@@ -33,11 +33,13 @@ func Initialize() (*Dependenсies, error) {
 		return nil, err
 	}
 	kafkaHendler := handlers.InitKafkaHandlers(consumer, producer)
+	messageHandler := handlers.InitMessageHandlers(messageService)
 	dependenсies := &Dependenсies{
 		Producer:        producer,
 		Consumer:        consumer,
 		MongoRepository: mongoRepository,
 		KafkaHendler:    kafkaHendler,
+		MessageHandler:  messageHandler,
 	}
 	return dependenсies, nil
 }
@@ -49,4 +51,5 @@ type Dependenсies struct {
 	Consumer        app.KConsumer
 	MongoRepository app.MongoRepository
 	KafkaHendler    *handlers.KafkaHendler
+	MessageHandler  *handlers.MessageHandler
 }

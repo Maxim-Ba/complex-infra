@@ -39,7 +39,7 @@ func main() {
 	if err != nil {
 		panic(fmt.Sprintf("Error on wire.Initialize() %v", err))
 	}
-	r := router.New(deps.KafkaHendler)
+	r := router.New(deps.KafkaHendler, deps.MessageHandler)
 
 	// Запуск консьюмера в горутине
 	go deps.Consumer.StartRead([]string{"messages"})

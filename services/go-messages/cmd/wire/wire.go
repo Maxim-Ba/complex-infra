@@ -19,6 +19,7 @@ type Dependenсies struct {
 	Consumer     app.KConsumer
 	MongoRepository app.MongoRepository
 	KafkaHendler *handlers.KafkaHendler
+	MessageHandler *handlers.MessageHandler
 }
 
 func Initialize() (*Dependenсies, error) {
@@ -33,7 +34,7 @@ func Initialize() (*Dependenсies, error) {
 		wire.Bind(new(app.MongoRepository), new(*mongo.MongoRepository)),
 		services.New,
 		wire.Bind(new(app.MessageService), new(*services.MessageService)),
-
+		handlers.InitMessageHandlers,
 		handlers.InitKafkaHandlers,
 		wire.Struct(new(Dependenсies), "*"),
 	)

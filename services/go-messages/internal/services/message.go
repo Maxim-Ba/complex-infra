@@ -14,6 +14,7 @@ type MessageService struct {
 	Producer app.KProducer
 }
 
+
 func New(repo app.MongoRepository, producer app.KProducer) (*MessageService, error) {
 
 	return &MessageService{
@@ -37,4 +38,29 @@ func (s *MessageService) HandleMessage(ctx context.Context, m models.MessageDTO)
 
 	s.Producer.Produce("message_confirmations", msgStr)
 	return nil
+}
+func (s *MessageService) Get(ctx context.Context, r models.RequestMessages) ([]models.MessageDTO, error) {
+    slog.Info("MessageService Get", "group", r.GroupiD, "offset", r.Offset, "count", r.Count)
+    
+    // Валидация параметров запроса
+    if r.GroupiD == "" {
+        return nil, fmt.Errorf("group ID cannot be empty")
+    }
+    
+    if r.Offset < 0 {
+        r.Offset = 0
+    }
+    
+    if r.Count <= 0 {
+        r.Count = 10 // Значение по умолчанию
+    } else if r.Count > 100 {
+        r.Count = 100 // Ограничение максимального количества
+    }
+    
+    messages, err := s.Repo.GetMessagesByGroup(ctx, r)
+    if err != nil {
+        return nil, fmt.Errorf("failed to get messages: %w", err)
+    }
+    
+    return messages, nil
 }

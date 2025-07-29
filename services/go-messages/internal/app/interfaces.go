@@ -35,9 +35,10 @@ type KConsumer interface {
 
 type MessageService interface {
 	HandleMessage(ctx context.Context, m models.MessageDTO) error
+	Get(ctx context.Context, r models.RequestMessages) ([]models.MessageDTO, error)
 }
 type MongoRepository interface {
 	SaveMessage(ctx context.Context, m models.MessageDTO) error
-	GetMessages(ctx context.Context) ([]models.MessageDTO, error)
+	GetMessagesByGroup(ctx context.Context, req models.RequestMessages) ([]models.MessageDTO, error)
 	Close(ctx context.Context) error
 }
