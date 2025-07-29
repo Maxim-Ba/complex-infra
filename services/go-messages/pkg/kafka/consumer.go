@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"context"
+	"encoding/json"
 	"go-messages/internal/app"
 	"go-messages/internal/models"
 	"log/slog"
@@ -110,11 +111,15 @@ func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 			"offset", msg.Offset,
 			"value", string(msg.Value),
 		)
-		m := models.MessageDTO{
-			Payload:  string(msg.Value),
-			Id:       "TODO CREATE ID",
-			Producer: "TODO CREATE PRODUCER",
+		var m models.MessageDTO
+		if err := json.Unmarshal(msg.Value, &m); err != nil {
+			slog.Error("Failed to unmarshal message", 
+				"error", err,
+				"value", string(msg.Value),
+			)
+			continue // Пропускаем сообщение при ошибке декодирования
 		}
+
 		// Обрабатываем сообщение
 		if err := c.handler.HandleMessage(session.Context(), m); err != nil {
 			slog.Error("Failed to handle message", "error", err)

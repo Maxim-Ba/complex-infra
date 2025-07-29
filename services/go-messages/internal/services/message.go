@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"go-messages/internal/app"
 	"go-messages/internal/models"
@@ -9,13 +10,15 @@ import (
 )
 
 type MessageService struct {
-	Repo app.MongoRepository
+	Repo     app.MongoRepository
+	Producer app.KProducer
 }
 
-func New(repo app.MongoRepository) (*MessageService, error) {
+func New(repo app.MongoRepository, producer app.KProducer) (*MessageService, error) {
 
 	return &MessageService{
-		Repo: repo,
+		Repo:     repo,
+		Producer: producer,
 	}, nil
 }
 
@@ -25,6 +28,13 @@ func (s *MessageService) HandleMessage(ctx context.Context, m models.MessageDTO)
 	if err := s.Repo.SaveMessage(ctx, m); err != nil {
 		return fmt.Errorf("failed to save message: %w", err)
 	}
-	//TODO Send response by KProducer
+
+	msgBytes, err := json.Marshal(m)
+	if err != nil {
+		return fmt.Errorf("MessageService HandleMessage failed to marshal message to JSON: %w", err)
+	}
+	msgStr := string(msgBytes)
+
+	s.Producer.Produce("message_confirmations", msgStr)
 	return nil
 }

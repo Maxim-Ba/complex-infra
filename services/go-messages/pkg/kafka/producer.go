@@ -37,11 +37,11 @@ func (p Producer) Close() {
 	}
 
 }
-func (p Producer) ProduceTest() error {
-	topic := "test_topic"
+
+func (p Producer) Produce(topic string , value string) error {
 	msg := &sarama.ProducerMessage{
 		Topic: topic,
-		Value: sarama.StringEncoder("Hello, Kafka from Go!"),
+		Value: sarama.StringEncoder(value),
 	}
 
 	partition, offset, err := producer.SendMessage(msg)

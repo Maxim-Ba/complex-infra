@@ -21,7 +21,7 @@ func InitKafkaHandlers(consumer app.KConsumer, provider app.KProducer) *KafkaHen
 }
 
 func (h *KafkaHendler) Produce(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	err := h.provider.ProduceTest()
+	err := h.provider.Produce("test_topic", "Hello, Kafka!")
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Producer error: %v", err), http.StatusInternalServerError)
 		return

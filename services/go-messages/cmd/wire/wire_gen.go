@@ -24,7 +24,7 @@ func Initialize() (*Dependenсies, error) {
 	if err != nil {
 		return nil, err
 	}
-	messageService, err := services.New(mongoRepository)
+	messageService, err := services.New(mongoRepository, producer)
 	if err != nil {
 		return nil, err
 	}

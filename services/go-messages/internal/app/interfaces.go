@@ -24,7 +24,7 @@ type DB interface {
 }
 
 type KProducer interface {
-	ProduceTest() error
+	Produce(topic string, value string) error
 	Close()
 }
 
