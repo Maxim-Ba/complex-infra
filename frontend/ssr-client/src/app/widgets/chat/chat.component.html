@@ -1,0 +1,36 @@
+@if(isLoading()){
+<div>Loading...</div>
+}
+
+@if(!connectionExist()){
+<button
+  [disabled]="isLoading()"
+  size="l"
+  tuiButton
+  type="button"
+  (click)="connect()"
+>
+  Connect to chat
+</button>
+} @else {
+
+<div [style]="{display:'flex', gap:5}">
+
+  <button
+    size="m"
+    tuiButton
+    type="button"
+    (click)="send()"
+  >
+    Send
+  </button>
+  <button
+    appearance="accent"
+    tuiButton
+    type="button"
+    (click)="disconnect()"
+  >
+    Disconnect
+  </button>
+</div>
+}

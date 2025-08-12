@@ -1,22 +1,15 @@
 package config
 
-import (
-	"strings"
-)
+import "strings"
 
 type Config struct {
-	Secret                    string
-	RedisAddr                 string
 	MetricsAddr               string
 	ServerAddr                string
 	JaegerAddr                string
+	MessageTopic              string
 	KafkaAddr                 string
 	KafkaBrokers              []string
 	KafkaGroupId              string
-	MongoDBURI                string
-	MongoDBDatabase           string
-	MongoDBCollection         string
-	MessageTopic              string
 	MessageConfirmationsTopic string
 }
 
@@ -26,19 +19,14 @@ func New() *Config {
 		panic(err.Error())
 	}
 	return &Config{
-		Secret:                    cfg.Secret,
-		RedisAddr:                 cfg.RedisAddr,
 		MetricsAddr:               cfg.MetricsAddr,
 		ServerAddr:                cfg.ServerAddr,
 		JaegerAddr:                cfg.JaegerAddr,
+		MessageTopic:              cfg.MessageTopic,
 		KafkaAddr:                 cfg.KafkaAddr,
 		KafkaBrokers:              strings.Split(cfg.KafkaBrokers, ","),
 		KafkaGroupId:              cfg.KafkaGroupId,
-		MessageTopic:              cfg.MessageTopic,
 		MessageConfirmationsTopic: cfg.MessageConfirmationsTopic,
-		MongoDBURI:                cfg.MongoDBURI,
-		MongoDBDatabase:           cfg.MongoDBDatabase,
-		MongoDBCollection:         "messages",
 	}
 }
 func (cfg *Config) GetConfig() *Config {

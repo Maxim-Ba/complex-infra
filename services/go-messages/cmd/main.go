@@ -42,7 +42,7 @@ func main() {
 	r := router.New(deps.KafkaHendler, deps.MessageHandler)
 
 	// Запуск консьюмера в горутине
-	go deps.Consumer.StartRead([]string{"messages"})
+	go deps.Consumer.StartRead()
 
 	httpServer := &http.Server{
 		Addr:    ":8080",

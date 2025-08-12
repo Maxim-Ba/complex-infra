@@ -5,17 +5,13 @@ import (
 )
 
 type Envs struct {
-	Secret                    string `env:"JWT_SECRET"`
-	RedisAddr                 string `env:"REDIS_ADDRESS"`
 	MetricsAddr               string `env:"METRICS_ADDRESS"`
 	ServerAddr                string `env:"SERVER_ADDRESS"`
 	JaegerAddr                string `env:"JEAGER_ADDRESS"`
+	MessageTopic              string `env:"MESSAGE_TOPIC"`
 	KafkaAddr                 string `env:"KAFKA_ADDRESS"`
 	KafkaBrokers              string `env:"KAFKA_BROKERS"`
 	KafkaGroupId              string `env:"KAFKA_GROUP_ID"`
-	MongoDBURI                string `env:"MONGODB_URI"`
-	MongoDBDatabase           string `env:"MONGODB_DATABASE"`
-	MessageTopic              string `env:"MESSAGE_TOPIC"`
 	MessageConfirmationsTopic string `env:"MESSAGE_CONFIRMATIONS_TOPIC"`
 }
 

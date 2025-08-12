@@ -233,7 +233,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
-
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: kafka-ui
@@ -248,7 +247,6 @@ services:
       kafka:
         condition: service_healthy
     restart: always
-
   go-messages:
     container_name: go-messages
     build:
@@ -282,6 +280,8 @@ services:
       - KAFKA_GROUP_ID=message-consumers
       - MONGODB_URI=mongodb://root:example@mongodb:27017
       - MONGODB_DATABASE=messages_db
+      - MESSAGE_TOPIC=messages
+      - MESSAGE_CONFIRMATIONS_TOPIC=message_confirmations
   postgres-users:
     container_name: postgres-users
     image: postgres:latest
@@ -334,6 +334,69 @@ services:
       - mongodb
     networks:
       - opensearch-net
+
+  # go-transport:
+  #   container_name: go-transport
+  #   build:
+  #     context: ../services/go-transport
+  #     dockerfile: ./docker/Dockerfile
+  #   volumes:
+  #     - ../services/go-transport/:/usr/local/src/
+  #   ports:
+  #     - "8087:8080"
+  #     - "8088:8081" # порт для метрик
+  #   depends_on:
+  #     fluentd:
+  #       condition: service_healthy
+  #     kafka:
+  #       condition: service_healthy
+  #   restart: always
+  #   <<: *logging
+  #   networks:
+  #     - opensearch-net
+  #   command: sh -c "sleep 10 && /app"
+  #   labels:
+  #     - "prometheus.scrape=true"
+  #     - "prometheus.port=8081"
+  #     - "prometheus.path=/metrics"
+  #   environment:
+  #     - KAFKA_ADDRESS=kafka:9092
+  #     - KAFKA_BROKERS=kafka:9092
+  #     - SERVER_ADDRESS=0.0.0.0:8080
+
+  go-websocket:
+    container_name: go-websocket
+    build:
+      context: ../services/go-websocket
+      dockerfile: ./docker/Dockerfile
+    volumes:
+      - ../services/go-websocket/:/usr/local/src/
+    ports:
+      - "8089:8080"
+      - "8090:8081" # порт для метрик
+    depends_on:
+      fluentd:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    restart: always
+    <<: *logging
+    networks:
+      - opensearch-net
+    command: sh -c "sleep 10 && /app"
+    labels:
+      - "prometheus.scrape=true"
+      - "prometheus.port=8081"
+      - "prometheus.path=/metrics"
+    environment:
+      - KAFKA_ADDRESS=kafka:9092
+      - KAFKA_BROKERS=kafka:9092
+      - KAFKA_GROUP_ID=message-confirmations-consumers
+      - SERVER_ADDRESS=0.0.0.0:8080
+      - MESSAGE_TOPIC=messages
+      - MESSAGE_CONFIRMATIONS_TOPIC=message_confirmations
+
+
 # TODO S3
 # TODO -> to k8s
 # TODO Gateway

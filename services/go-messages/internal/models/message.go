@@ -3,7 +3,7 @@ package models
 import "time"
 
 type MessageDTO struct {
-	Id        string    `json:"id"`
+	PId        string    `json:"pid"` // id from provider
 	Producer  string    `json:"producer"`
 	Payload   string    `json:"payload"`
 	Group     string    `json:"group"` // чат или комната

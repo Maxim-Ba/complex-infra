@@ -25,7 +25,7 @@ func New(repo app.MongoRepository, producer app.KProducer) (*MessageService, err
 
 func (s *MessageService) HandleMessage(ctx context.Context, m models.MessageDTO) error {
 
-	slog.Info(fmt.Sprintf("MessageService HandleMessage Id:%s, Producer:%s, Payload:%s", m.Id, m.Producer, m.Payload))
+	slog.Info(fmt.Sprintf("MessageService HandleMessage Id:%s, Producer:%s, Payload:%s", m.PId, m.Producer, m.Payload))
 	if err := s.Repo.SaveMessage(ctx, m); err != nil {
 		return fmt.Errorf("failed to save message: %w", err)
 	}
@@ -36,6 +36,7 @@ func (s *MessageService) HandleMessage(ctx context.Context, m models.MessageDTO)
 	}
 	msgStr := string(msgBytes)
 
+	// TODO записать createdAt из БД
 	s.Producer.Produce("message_confirmations", msgStr)
 	return nil
 }

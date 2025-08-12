@@ -3,9 +3,12 @@ package kafka
 import (
 	"context"
 	"encoding/json"
-	"go-messages/internal/app"
-	"go-messages/internal/models"
+	"go-websocket/internal/app"
+	"go-websocket/internal/models"
+
 	"log/slog"
+	"os"
+	"os/signal"
 	"sync"
 
 	"github.com/IBM/sarama"
@@ -15,12 +18,13 @@ type Consumer struct {
 	consumerGroup sarama.ConsumerGroup
 	handler       app.MessageService
 	ready         chan bool
-	topics        []string
+	topics []string
 }
+
 
 func NewConsumer(cfg app.AppConfig, handler app.MessageService) (*Consumer, error) {
 	config := sarama.NewConfig()
-	config.Version = sarama.V2_8_0_0
+	config.Version = sarama.V2_8_0_0 
 	config.Consumer.Return.Errors = true
 	c := cfg.GetConfig()
 
@@ -37,7 +41,7 @@ func NewConsumer(cfg app.AppConfig, handler app.MessageService) (*Consumer, erro
 		consumerGroup: consumerGroup,
 		handler:       handler,
 		ready:         make(chan bool),
-		topics: []string{ c.GetConfig().MessageTopic},
+		topics:  []string{ c.GetConfig().MessageConfirmationsTopic},
 	}, nil
 }
 
@@ -49,7 +53,6 @@ func (c Consumer) Close() {
 }
 
 func (c Consumer) StartRead() {
-
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -74,14 +77,14 @@ func (c Consumer) StartRead() {
 	<-c.ready
 	slog.Info("Sarama consumer up and running...")
 
-	// sigterm := make(chan os.Signal, 1)
-	// signal.Notify(sigterm, os.Interrupt)
+	sigterm := make(chan os.Signal, 1)
+	signal.Notify(sigterm, os.Interrupt)
 
 	select {
 	case <-ctx.Done():
 		slog.Info("Terminating: context cancelled")
-		// case <-sigterm:
-		// 	slog.Info("Terminating: via signal")
+	case <-sigterm:
+		slog.Info("Terminating: via signal")
 	}
 	cancel()
 	wg.Wait()
@@ -113,7 +116,7 @@ func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 		)
 		var m models.MessageDTO
 		if err := json.Unmarshal(msg.Value, &m); err != nil {
-			slog.Error("Failed to unmarshal message",
+			slog.Error("Failed to unmarshal message", 
 				"error", err,
 				"value", string(msg.Value),
 			)
@@ -121,7 +124,7 @@ func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 		}
 
 		// Обрабатываем сообщение
-		if err := c.handler.HandleMessage(session.Context(), m); err != nil {
+		if err := c.handler.HandleConfirmationMessage(session.Context(), m); err != nil {
 			slog.Error("Failed to handle message", "error", err)
 			continue // Не подтверждаем offset при ошибке
 		}

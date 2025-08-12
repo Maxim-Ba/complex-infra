@@ -29,7 +29,7 @@ type KProducer interface {
 }
 
 type KConsumer interface {
-	StartRead(topics []string)
+	StartRead()
 	Close()
 }
 
