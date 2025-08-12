@@ -75,7 +75,11 @@ func (s *WebSocketService) HandleConnections(w http.ResponseWriter, r *http.Requ
 		if err := json.Unmarshal(message, &msg); err != nil {
 			conn.WriteMessage(websocket.TextMessage, []byte("Wrong message DTO"))
 		}
+		err = Validator.Struct(msg)
+		if err != nil {
+			conn.WriteMessage(websocket.TextMessage, []byte("Wrong message DTO: " + err.Error()))
 
+		}
 		s.KProducer.Produce(topic, string(message))
 
 		// Обновление таймаута после успешного чтения сообщения
