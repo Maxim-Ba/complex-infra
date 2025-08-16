@@ -13,6 +13,8 @@ type Envs struct {
 	KafkaBrokers              string `env:"KAFKA_BROKERS"`
 	KafkaGroupId              string `env:"KAFKA_GROUP_ID"`
 	MessageConfirmationsTopic string `env:"MESSAGE_CONFIRMATIONS_TOPIC"`
+	RTCSignalTopic            string `env:"RTC_SIGNAL_TOPIC"`
+	RTCResponseTopic          string `env:"RTC_RESPONSE_TOPIC"`
 }
 
 func ParseEnv() (*Envs, error) {

@@ -57,17 +57,18 @@ func (s *WebSocketService) HandleConnections(w http.ResponseWriter, r *http.Requ
 	slog.Info("WebSocketService HandleConnections producer is: " + producer)
 
 	defer func() {
+		// TODO проверить есть ли producer в БД - удалить из БД
 		delete(s.connections, producer)
 		conn.Close()
 	}()
 
 	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
-	topic := s.Config.GetConfig().MessageTopic
-	// цикл обработки сообщений
+	messageTopic := s.Config.GetConfig().MessageTopic
+	webRTCTopic := s.Config.GetConfig().RTCSignalTopic
+
 	for {
 		_, message, err := conn.ReadMessage()
 		if err != nil {
-			// обработка ошибки
 			break
 		}
 		log.Println("HandleConnections msg:", message)
@@ -80,7 +81,12 @@ func (s *WebSocketService) HandleConnections(w http.ResponseWriter, r *http.Requ
 			conn.WriteMessage(websocket.TextMessage, []byte("Wrong message DTO: " + err.Error()))
 
 		}
-		s.KProducer.Produce(topic, string(message))
+		switch msg.Action {
+		case "message":
+			s.KProducer.Produce(messageTopic, string(message))
+		case "webrtc":
+			s.KProducer.Produce(webRTCTopic, string(message))
+		}
 
 		// Обновление таймаута после успешного чтения сообщения
 		conn.SetReadDeadline(time.Now().Add(60 * time.Second))

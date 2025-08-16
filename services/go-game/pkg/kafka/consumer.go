@@ -3,8 +3,8 @@ package kafka
 import (
 	"context"
 	"encoding/json"
-	"go-websocket/internal/app"
-	"go-websocket/internal/models"
+	"go-game/internal/app"
+	"go-game/internal/models"
 
 	"log/slog"
 	"os"
@@ -18,20 +18,16 @@ type Consumer struct {
 	consumerGroup sarama.ConsumerGroup
 	handler       app.MessageService
 	ready         chan bool
-	topics        []string
+	topics []string
 }
 
-var webRTCResponceTopic string
-var messageConfirmationsTopic string
 
 func NewConsumer(cfg app.AppConfig, handler app.MessageService) (*Consumer, error) {
 	config := sarama.NewConfig()
-	config.Version = sarama.V2_8_0_0
+	config.Version = sarama.V2_8_0_0 
 	config.Consumer.Return.Errors = true
 	c := cfg.GetConfig()
 
-	webRTCResponceTopic = c.GetConfig().RTCResponseTopic
-	messageConfirmationsTopic = c.GetConfig().MessageConfirmationsTopic
 	// Настройка ручного управления offset'ами
 	config.Consumer.Offsets.AutoCommit.Enable = false     // Отключаем авто-коммит
 	config.Consumer.Offsets.Initial = sarama.OffsetNewest // Начинаем чтение с новых сообщений
@@ -45,7 +41,7 @@ func NewConsumer(cfg app.AppConfig, handler app.MessageService) (*Consumer, erro
 		consumerGroup: consumerGroup,
 		handler:       handler,
 		ready:         make(chan bool),
-		topics:        []string{messageConfirmationsTopic, webRTCResponceTopic},
+		topics:  []string{ c.GetConfig().RTCSignalTopic},
 	}, nil
 }
 
@@ -109,6 +105,7 @@ func (c *Consumer) Cleanup(sarama.ConsumerGroupSession) error {
 	return nil
 }
 
+// ConsumeClaim обрабатывает сообщения из партиции.
 func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	for msg := range claim.Messages() {
 		slog.Info("New message received",
@@ -119,27 +116,22 @@ func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 		)
 		var m models.MessageDTO
 		if err := json.Unmarshal(msg.Value, &m); err != nil {
-			slog.Error("Failed to unmarshal message",
+			slog.Error("Failed to unmarshal message", 
 				"error", err,
 				"value", string(msg.Value),
 			)
-			continue
-		}
-		switch msg.Topic {
-		case messageConfirmationsTopic:
-			if err := c.handler.HandleConfirmationMessage(session.Context(), m); err != nil {
-				slog.Error("Failed to handle message", "error", err)
-				continue 
-			}
-		case webRTCResponceTopic:
-			if err := c.handler.HandleWebRTCResponse(session.Context(), m); err != nil {
-				slog.Error("Failed to handle message", "error", err)
-				continue 
-			}
+			continue // Пропускаем сообщение при ошибке декодирования
 		}
 
+		// Обрабатываем сообщение
+		if err := c.handler.HandleMessage(session.Context(), m); err != nil {
+			slog.Error("Failed to handle message", "error", err)
+			continue // Не подтверждаем offset при ошибке
+		}
+
+		// Вручную подтверждаем успешную обработку
 		session.MarkMessage(msg, "")
-		session.Commit()
+		session.Commit() // Явный коммит
 	}
 	return nil
 }

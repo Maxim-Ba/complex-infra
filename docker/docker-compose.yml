@@ -395,7 +395,47 @@ services:
       - SERVER_ADDRESS=0.0.0.0:8080
       - MESSAGE_TOPIC=messages
       - MESSAGE_CONFIRMATIONS_TOPIC=message_confirmations
-
+      - RTC_SIGNAL_TOPIC=rtc_signal
+      - RTC_RESPONSE_TOPIC=rtc_response
+  go-game:
+    container_name: go-game
+    build:
+      context: ../services/go-game
+      dockerfile: ./docker/Dockerfile
+    volumes:
+      - ../services/go-game/:/usr/local/src/
+    ports:
+      - "8091:8080"
+      - "8092:8081" # порт для метрик
+    depends_on:
+      fluentd:
+        condition: service_healthy
+      postgres-users:
+        condition: service_healthy
+    restart: always
+    <<: *logging
+    networks:
+      - opensearch-net
+    command: sh -c "sleep 10 && /app"
+    labels:
+      - "prometheus.scrape=true"
+      - "prometheus.port=8081"
+      - "prometheus.path=/metrics"
+    environment:
+      - REDIS_ADDRESS=redis:6380
+      - POSTGRES_HOST=postgres-users
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=users_db
+      - MIGRATIONS_PATH=/usr/local/src/migrations
+      - KAFKA_ADDRESS=kafka:9092
+      - KAFKA_BROKERS=kafka:9092
+      - KAFKA_GROUP_ID=webrtc-group
+      - RTC_SIGNAL_TOPIC=rtc_signal
+      - RTC_RESPONSE_TOPIC=rtc_response
+      - RTC_ICE_SERVERS=stun:stun.l.google.com:19302
+      - RTC_SIGNAL_TIMEOUT=30
 
 # TODO S3
 # TODO -> to k8s

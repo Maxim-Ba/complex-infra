@@ -11,6 +11,8 @@ type Config struct {
 	KafkaBrokers              []string
 	KafkaGroupId              string
 	MessageConfirmationsTopic string
+	RTCSignalTopic            string
+	RTCResponseTopic          string
 }
 
 func New() *Config {
@@ -27,6 +29,8 @@ func New() *Config {
 		KafkaBrokers:              strings.Split(cfg.KafkaBrokers, ","),
 		KafkaGroupId:              cfg.KafkaGroupId,
 		MessageConfirmationsTopic: cfg.MessageConfirmationsTopic,
+		RTCSignalTopic:            cfg.RTCSignalTopic,
+		RTCResponseTopic:          cfg.RTCResponseTopic,
 	}
 }
 func (cfg *Config) GetConfig() *Config {
