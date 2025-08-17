@@ -22,6 +22,7 @@ type Envs struct {
 	RTCResponseTopic       string   `env:"RTC_RESPONSE_TOPIC"`
 	WebRTCIceServers       []string `env:"RTC_ICE_SERVERS" envSeparator:","`
 	WebRTCSignalingTimeout int32    `env:"RTC_SIGNAL_TIMEOUT"`
+	ExternalIP             string   `env:"EXTERNAL_IP"`
 }
 
 func ParseEnv() (*Envs, error) {

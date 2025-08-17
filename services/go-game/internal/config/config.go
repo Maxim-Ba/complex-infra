@@ -20,6 +20,7 @@ type Config struct {
 	RTCResponseTopic       string
 	WebRTCIceServers       []string // STUN/TURN серверы
 	WebRTCSignalingTimeout int32    // Таймаут сигналинга в секундах
+	ExternalIP             string
 }
 
 func New() *Config {
@@ -45,6 +46,7 @@ func New() *Config {
 		RTCResponseTopic:       cfg.RTCResponseTopic,
 		WebRTCIceServers:       cfg.WebRTCIceServers,
 		WebRTCSignalingTimeout: cfg.WebRTCSignalingTimeout,
+		ExternalIP:             cfg.ExternalIP,
 	}
 }
 func (cfg *Config) GetConfig() *Config {

@@ -407,6 +407,8 @@ services:
     ports:
       - "8091:8080"
       - "8092:8081" # порт для метрик
+      - "3478:3478/udp"  # STUN
+      - "50000-50100:50000-50100/udp" 
     depends_on:
       fluentd:
         condition: service_healthy
@@ -416,6 +418,10 @@ services:
     <<: *logging
     networks:
       - opensearch-net
+
+      # opensearch-net:
+      #   ipv4_address: 172.29.1.10  # Фиксированный IP
+    # network_mode: host # для лакальной разработки
     command: sh -c "sleep 10 && /app"
     labels:
       - "prometheus.scrape=true"
@@ -434,8 +440,10 @@ services:
       - KAFKA_GROUP_ID=webrtc-group
       - RTC_SIGNAL_TOPIC=rtc_signal
       - RTC_RESPONSE_TOPIC=rtc_response
-      - RTC_ICE_SERVERS=stun:stun.l.google.com:19302
+      - RTC_ICE_SERVERS=stun:127.0.0.1:3478
       - RTC_SIGNAL_TIMEOUT=30
+      - EXTERNAL_IP=127.0.0.1  
+
 
 # TODO S3
 # TODO -> to k8s
@@ -452,3 +460,7 @@ volumes:
 networks:
   opensearch-net:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.29.0.0/16
+          gateway: 172.29.0.1

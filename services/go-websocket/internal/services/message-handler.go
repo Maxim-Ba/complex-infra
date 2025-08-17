@@ -20,6 +20,7 @@ func NewMsgHandler(ws app.WebSocketService) *MessageHandler {
 }
 
 func (s *MessageHandler) HandleConfirmationMessage(ctx context.Context, m models.MessageDTO) error {
+	m.Action= "message-confirmation"
 	err := s.ws.SendMessage(m)
 	if err != nil {
 		return fmt.Errorf("MessageHandler HandleConfirmationMessage: %w", err)

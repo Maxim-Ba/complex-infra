@@ -14,23 +14,51 @@
 </button>
 } @else {
 
-<div [style]="{display:'flex', gap:5}">
+  <div>
+    <div [style]="{display:'flex', gap:5}">
 
+      <button
+        size="m"
+        tuiButton
+        type="button"
+        (click)="send()"
+      >
+        Send
+      </button>
+      <button
+        size="m"
+        tuiButton
+        type="button"
+        (click)="webRTCStart()"
+      >
+        Connect to game
+  </button>
+  <button
+  appearance="accent"
+  tuiButton
+  type="button"
+  (click)="disconnect()"
+  >
+  Disconnect
+  </button>
   <button
     size="m"
     tuiButton
     type="button"
-    (click)="send()"
+    (click)="sendPing()"
   >
-    Send
+    PING
   </button>
-  <button
-    appearance="accent"
-    tuiButton
-    type="button"
-    (click)="disconnect()"
-  >
-    Disconnect
-  </button>
+  </div>
+  @if (messages().length){
+  <div>
+    <h3>Received messages:</h3>
+    @for (msg of messages(); track $index) {
+    <div>{{ msg }}</div>
+    }
+
+  </div>
+  }
+
 </div>
 }

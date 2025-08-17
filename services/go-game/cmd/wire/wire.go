@@ -16,7 +16,8 @@ import (
 type Dependenсies struct {
 	Producer       app.KProducer
 	Consumer       app.KConsumer
-	MessageService *app.MessageService
+	MessageService app.MessageService
+	RTCManager     *webrtc.RTCManager
 }
 
 func Initialize() (*Dependenсies, error) {

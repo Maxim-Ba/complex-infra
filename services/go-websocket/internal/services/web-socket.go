@@ -71,7 +71,7 @@ func (s *WebSocketService) HandleConnections(w http.ResponseWriter, r *http.Requ
 		if err != nil {
 			break
 		}
-		log.Println("HandleConnections msg:", message)
+		log.Println("HandleConnections msg:",string(message) )
 		var msg models.MessageDTO
 		if err := json.Unmarshal(message, &msg); err != nil {
 			conn.WriteMessage(websocket.TextMessage, []byte("Wrong message DTO"))

@@ -1,11 +1,14 @@
 import { Injectable } from '@angular/core';
 import { MessageDTO } from '../models/message';
 
+type THandler = (msg: MessageDTO) => void;
+
 @Injectable({ providedIn: 'root' })
 export class WebSocketService {
   private pid: number = 0;
   private socket!: WebSocket;
   private providerID!: string;
+  private handlers: THandler[] = [];
 
   connect(providerID: string) {
     this.providerID = providerID;
@@ -48,8 +51,11 @@ export class WebSocketService {
   };
   private onMessage = (event: MessageEvent) => {
     console.log({ event });
-    console.log(JSON.parse(event.data));
+    const data = JSON.parse(event.data);
+    console.log(data);
+    console.log(this.handlers);
 
+    this.handlers.forEach((h) => h(data));
   };
   private onError = (event: Event) => {
     console.error({ event });
@@ -57,4 +63,13 @@ export class WebSocketService {
   private onOpen = (event: Event) => {
     console.log('WS connection open');
   };
+  registerHandler(h: THandler) {
+    if (this.handlers.includes(h)) {
+      return;
+    }
+    this.handlers.push(h);
+  }
+  removeHandler(h: THandler) {
+    this.handlers = this.handlers.filter((hdl) => h !== hdl);
+  }
 }
