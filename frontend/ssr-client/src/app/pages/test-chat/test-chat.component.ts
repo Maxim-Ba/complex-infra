@@ -2,9 +2,8 @@ import { Component } from "@angular/core";
 import { ChatComponent } from "../../widgets/chat/chat.component";
 
 @Component({
-  imports:[ChatComponent],
-  template:"<app-chat/>"
+  standalone: true,
+  imports: [ChatComponent],
+  template: ` <app-chat /> `,
 })
-export class TestChatComponent{
-
-}
+export class TestChatComponent {}

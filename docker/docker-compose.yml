@@ -407,21 +407,20 @@ services:
     ports:
       - "8091:8080"
       - "8092:8081" # порт для метрик
-      - "3478:3478/udp"  # STUN
-      - "50000-50100:50000-50100/udp" 
+      # - "3478:3478/udp"  # STUN
+      - "50000-50100:50000-50100/udp"   # TURN порты
     depends_on:
       fluentd:
         condition: service_healthy
-      postgres-users:
-        condition: service_healthy
+      
     restart: always
     <<: *logging
     networks:
-      - opensearch-net
+      # - opensearch-net
 
-      # opensearch-net:
-      #   ipv4_address: 172.29.1.10  # Фиксированный IP
-    # network_mode: host # для лакальной разработки
+      opensearch-net:
+        # ipv4_address: 172.29.1.10  # Фиксированный IP
+    # network_mode: host # для локальной разработки
     command: sh -c "sleep 10 && /app"
     labels:
       - "prometheus.scrape=true"
@@ -440,10 +439,39 @@ services:
       - KAFKA_GROUP_ID=webrtc-group
       - RTC_SIGNAL_TOPIC=rtc_signal
       - RTC_RESPONSE_TOPIC=rtc_response
-      - RTC_ICE_SERVERS=stun:127.0.0.1:3478
+      - RTC_ICE_SERVERS=stun:coturn:3478,turn:coturn:3478?transport=udp
       - RTC_SIGNAL_TIMEOUT=30
-      - EXTERNAL_IP=127.0.0.1  
-
+      # - EXTERNAL_IP=172.29.1.10
+  coturn:
+    image: coturn/coturn
+    container_name: coturn
+    # volumes:
+    #   - ../services/coturn/config/turnserver.conf:/etc/coturn/turnserver.conf
+    ports:
+      - "3478:3478/udp"     # STUN/TURN over UDP
+      - "3478:3478/tcp"     # (не требуется для WebRTC)
+      - "5349:5349/tcp"     # REST API 
+    networks:
+      opensearch-net:
+        # ipv4_address: 172.29.1.5
+    restart: unless-stopped
+  
+    environment:
+    - TURNSERVER_ENABLED=1
+    - LISTENING_PORT=3478
+    - MIN_PORT=50000
+    - MAX_PORT=50100
+    - REALM=local
+    - USER=user:password
+    # - EXTERNAL_IP=172.29.1.5  # Используем IP из логов (172.29.1.5)
+    - LISTENING_IP=0.0.0.0
+    - VERBOSE=1
+    - NO_AUTH=0  # Включаем аутентификацию
+    - NO_CLI=0
+    - SECURE_STUN=0
+    - ALLOW_LOOPBACK_PEERS=1  # Разрешаем loopback
+    - DENIED_PEER_IP=  # Очищаем denied IPs
+    - ALLOWED_PEER_IP=0.0.0.0-255.255.255.255  # Разрешаем все IP
 
 # TODO S3
 # TODO -> to k8s
@@ -462,5 +490,5 @@ networks:
     driver: bridge
     ipam:
       config:
-        - subnet: 172.29.0.0/16
-          gateway: 172.29.0.1
+        - subnet: 172.29.1.0/24
+          gateway: 172.29.1.1

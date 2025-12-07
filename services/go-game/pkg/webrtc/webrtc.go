@@ -8,9 +8,12 @@ import (
 	"go-game/internal/app"
 	"go-game/internal/models"
 	"log/slog"
+	"net"
 	"strings"
 	"sync"
+	"time"
 
+	"github.com/pion/turn/v2"
 	"github.com/pion/webrtc/v3"
 )
 
@@ -19,6 +22,8 @@ type RTCManager struct {
 	peers    sync.Map // map[sessionID]*PeerConnection
 	config   webrtc.Configuration
 	api      *webrtc.API
+			turnAuth *TurnAuthenticator
+
 }
 
 type PeerConnection struct {
@@ -26,39 +31,77 @@ type PeerConnection struct {
 	PlayerID string
 	GameID   string
 	DataChan *webrtc.DataChannel // ссылка на канал
+
+}
+type TurnAuthenticator struct {
+	username string
+	password string
 }
 
+func (a *TurnAuthenticator) Authenticate(username, realm string, srcAddr net.Addr) ([]byte, bool) {
+	key := turn.GenerateAuthKey(username, realm, a.password)
+	return key, username == a.username
+}
 var responseTopic string
 
 func NewRTCManager(producer app.KProducer, cfg app.AppConfig) *RTCManager {
 	settingEngine := webrtc.SettingEngine{}
 
+turnAuth := &TurnAuthenticator{
+		username: "user",
+		password: "password",
+	}
+
 	responseTopic = cfg.GetConfig().RTCResponseTopic
-	if cfg.GetConfig().ExternalIP != "" {
+
+if cfg.GetConfig().ExternalIP != "" {
 		settingEngine.SetNAT1To1IPs([]string{cfg.GetConfig().ExternalIP}, webrtc.ICECandidateTypeHost)
+		
+		// Установка диапазона портов для TURN релеев
+		settingEngine.SetEphemeralUDPPortRange(50000, 50100)
 	} else {
+		// Фильтр интерфейсов для разработки
 		settingEngine.SetInterfaceFilter(func(iface string) bool {
-			return strings.HasPrefix(iface, "en") || strings.HasPrefix(iface, "eth") || strings.HasPrefix(iface, "wlan")
+			return strings.HasPrefix(iface, "en") || 
+				   strings.HasPrefix(iface, "eth") || 
+				   strings.HasPrefix(iface, "wlan")||
+					  strings.HasPrefix(iface, "br-")
 		})
 	}
 
-	var iceServersConfig []webrtc.ICEServer
-	iceServers := cfg.GetConfig().WebRTCIceServers
+	// Включение более агрессивной сборки ICE кандидатов
+	settingEngine.SetLite(false)
+	settingEngine.SetNetworkTypes([]webrtc.NetworkType{
+		webrtc.NetworkTypeUDP4,
+		webrtc.NetworkTypeTCP4,
+	})
 
 	api := webrtc.NewAPI(webrtc.WithSettingEngine(settingEngine))
 
-	for _, server := range iceServers {
-		iceServersConfig = append(iceServersConfig, webrtc.ICEServer{
-			URLs: []string{server},
-		})
-	}
+	iceServersConfig := []webrtc.ICEServer{
+        {
+            URLs: []string{"stun:coturn:3478"}, // Используем имя контейнера
+        },
+        {
+            URLs:       []string{"turn:coturn:3478?transport=udp"},
+            Username:   "user",
+            Credential: "password",
+        },
+        {
+            URLs:       []string{"turn:coturn:3478?transport=tcp"},
+            Username:   "user",
+            Credential: "password",
+        },
+    }
 
 	return &RTCManager{
 		producer: producer,
 		config: webrtc.Configuration{
-			ICEServers: iceServersConfig,
+			ICEServers:   iceServersConfig,
+			SDPSemantics: webrtc.SDPSemanticsUnifiedPlanWithFallback,
 		},
-		api: api,
+		api:      api,
+		turnAuth: turnAuth,
 	}
 }
 
@@ -75,18 +118,41 @@ func (m *RTCManager) HandleOffer(ctx context.Context, offer models.WebRTCOffer) 
 		GameID:         offer.GameID,
 	}
 	m.peers.Store(offer.SessionID, peer)
-
+// Установка таймаутов для ICE
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	// Канал для отслеживания завершения ICE gathering
+	iceGatheringComplete := make(chan struct{}, 1)
 	//set handler of ICE candidate
+//set handler of ICE candidate
 	peerConnection.OnICECandidate(func(c *webrtc.ICECandidate) {
 		if c == nil {
 			slog.Info("ICE gathering complete")
+			select {
+			case iceGatheringComplete <- struct{}{}:
+			default:
+			}
 			return
 		}
+
+		// Фильтруем локальные кандидаты, которые не будут работать через NAT
+		candidateJSON := c.ToJSON()
+		if strings.Contains(candidateJSON.Candidate, "192.168.") || 
+		   strings.Contains(candidateJSON.Candidate, "172.") ||
+		   strings.Contains(candidateJSON.Candidate, "10.") ||
+		   strings.Contains(candidateJSON.Candidate, "127.0.0.1") ||
+		   strings.Contains(candidateJSON.Candidate, "localhost") {
+			slog.Debug("Skipping private IP candidate", "candidate", candidateJSON.Candidate)
+			return
+		}
+
 		slog.Info("Generated ICE candidate",
-			"candidate", c.ToJSON().Candidate,
-			"address", c.Address)
+			"candidate", candidateJSON.Candidate,
+			"address", c.Address,
+		)
+
 		candidate := models.ICECandidate{
-			Candidate: c.ToJSON().Candidate,
+			Candidate: candidateJSON.Candidate,
 			PlayerID:  offer.PlayerID,
 			GameID:    offer.GameID,
 			SessionID: offer.SessionID,
@@ -102,28 +168,48 @@ func (m *RTCManager) HandleOffer(ctx context.Context, offer models.WebRTCOffer) 
 		m.producer.Produce("rtc-response", string(data))
 	})
 
+	// Обработка состояния соединения
+	peerConnection.OnConnectionStateChange(func(s webrtc.PeerConnectionState) {
+		slog.Info("Connection state changed", 
+			"state", s.String(),
+			"playerID", offer.PlayerID,
+			"gameID", offer.GameID)
+		
+		if s == webrtc.PeerConnectionStateFailed {
+			// Попытка восстановления соединения
+			slog.Warn("Connection failed, attempting to restart ICE")
+			go m.restartICE(offer.SessionID)
+		} else if s == webrtc.PeerConnectionStateClosed {
+			m.peers.Delete(offer.SessionID)
+		}
+	})
+
 	// data handler
 	peerConnection.OnDataChannel(func(d *webrtc.DataChannel) {
+		peer.DataChan = d // Сохраняем ссылку на канал
+		
+		d.OnOpen(func() {
+			slog.Info("Data channel opened",
+				"playerID", peer.PlayerID,
+				"gameID", peer.GameID)
+		})
+		
 		d.OnMessage(func(msg webrtc.DataChannelMessage) {
-			peer.DataChan = d // Сохраняем ссылку на канал
-			d.OnOpen(func() {
-				slog.Info("Data channel opened",
-					"playerID", peer.PlayerID,
-					"gameID", peer.GameID)
-			})
-			d.OnMessage(func(msg webrtc.DataChannelMessage) {
-				// Обработка игровых сообщений
-				slog.Info("Received game message",
-					"playerID", peer.PlayerID,
-					"data", string(msg.Data))
+			// Обработка игровых сообщений
+			slog.Info("Received game message",
+				"playerID", peer.PlayerID,
+				"data", string(msg.Data))
+		})
 
-				// TODO handle game messages
-			})
-
-			d.OnClose(func() {
-				slog.Info("Data channel closed")
-				m.peers.Delete(offer.SessionID)
-			})
+		d.OnClose(func() {
+			slog.Info("Data channel closed")
+			m.peers.Delete(offer.SessionID)
+		})
+		
+		d.OnError(func(err error) {
+			slog.Error("Data channel error", 
+				"error", err,
+				"playerID", peer.PlayerID)
 		})
 	})
 
@@ -135,9 +221,17 @@ func (m *RTCManager) HandleOffer(ctx context.Context, offer models.WebRTCOffer) 
 		return fmt.Errorf("RTCManager HandleOffer SetRemoteDescription: %w", err)
 	}
 
+	// Создаем answer с настройками для лучшей совместимости
 	answer, err := peerConnection.CreateAnswer(nil)
 	if err != nil {
 		return fmt.Errorf("RTCManager HandleOffer CreateAnswer: %w", err)
+	}
+
+	// Ждем завершения ICE gathering перед отправкой answer
+	select {
+	case <-iceGatheringComplete:
+	case <-ctx.Done():
+		slog.Warn("ICE gathering timeout", "sessionID", offer.SessionID)
 	}
 
 	if err = peerConnection.SetLocalDescription(answer); err != nil {
@@ -222,4 +316,27 @@ func (m *RTCManager) SendToPlayer(playerID string, data []byte) error {
 		return errors.New("player not found or data channel not ready")
 	}
 	return nil
+}
+func (m *RTCManager) restartICE(sessionID string) {
+	value, ok := m.peers.Load(sessionID)
+	if !ok {
+		return
+	}
+
+	peer := value.(*PeerConnection)
+	
+	// Создаем новый offer для инициации restart ICE
+	offer, err := peer.CreateOffer(nil)
+	if err != nil {
+		slog.Error("Failed to create restart offer", "error", err)
+		return
+	}
+
+	if err := peer.SetLocalDescription(offer); err != nil {
+		slog.Error("Failed to set local description for restart", "error", err)
+		return
+	}
+
+	// Отправляем новый offer через signaling
+	// (реализация зависит от вашей signaling инфраструктуры)
 }

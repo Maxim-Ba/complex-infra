@@ -11,8 +11,21 @@ export class WebRTCService {
   async initPeer(): Promise<RTCSessionDescriptionInit> {
     const peerConnection = new RTCPeerConnection({
       iceServers: [
-        { urls: 'stun:stun1.l.google.com:19302' },
-        { urls: 'stun:stun2.l.google.com:19302' },
+        {
+          urls: 'stun:localhost:3478',
+          username: 'user',
+          credential: 'password',
+        },
+        {
+          urls: 'turn:localhost:3478?transport=udp',
+          username: 'user',
+          credential: 'password',
+        },
+        {
+          urls: 'turn:localhost:3478?transport=tcp',
+          username: 'user',
+          credential: 'password',
+        },
       ],
     });
     this.monitorConnectionStates();
@@ -28,6 +41,9 @@ export class WebRTCService {
       console.log('ICE gathering state:', peerConnection.iceGatheringState);
     };
 
+    peerConnection.onicecandidateerror = (event) => {
+      console.error('ICE candidate error:', event.errorCode, event.errorText);
+    };
     peerConnection.onicecandidate = (event) => {
       if (event.candidate) {
         console.log('New ICE candidate:', event.candidate);
@@ -39,6 +55,8 @@ export class WebRTCService {
     // Создаем канал для игровых данных
     this.dataChannel = peerConnection.createDataChannel('gameData', {
       ordered: true, // Гарантирует порядок доставки сообщений
+      // maxPacketLifeTime: 1000, // 1 секунда
+      // maxRetransmits: 3
     });
 
     this.dataChannel.onopen = () => {
@@ -123,4 +141,5 @@ export class WebRTCService {
       console.log('Connection state:', this.peerConnection.connectionState);
     };
   }
+
 }
