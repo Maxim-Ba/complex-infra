@@ -442,6 +442,8 @@ services:
       - RTC_ICE_SERVERS=stun:coturn:3478,turn:coturn:3478?transport=udp
       - RTC_SIGNAL_TIMEOUT=30
       # - EXTERNAL_IP=172.29.1.10
+      - MESSAGE_TOPIC=messages
+      - MESSAGE_CONFIRMATIONS_TOPIC=message_confirmations
   coturn:
     image: coturn/coturn
     container_name: coturn
@@ -473,6 +475,12 @@ services:
     - DENIED_PEER_IP=  # Очищаем denied IPs
     - ALLOWED_PEER_IP=0.0.0.0-255.255.255.255  # Разрешаем все IP
 
+  sqlc:
+    image: sqlc/sqlc:latest
+    volumes:
+      - ../services/go-game/:/src
+    working_dir: /src
+    command: generate
 # TODO S3
 # TODO -> to k8s
 # TODO Gateway

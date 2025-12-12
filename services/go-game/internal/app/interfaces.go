@@ -21,3 +21,4 @@ type KConsumer interface {
 	StartRead()
 	Close()
 }
+

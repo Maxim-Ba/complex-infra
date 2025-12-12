@@ -32,13 +32,11 @@ go deps.Consumer.StartRead()
 
     gameService := services.NewGameService(deps.RTCManager)
     
-    // Пример использования
     go func() {
         ticker := time.NewTicker(100 * time.Millisecond)
         defer ticker.Stop()
         
         for range ticker.C {
-            // Здесь можно обновлять состояние игры и рассылать его
             if err := gameService.BroadcastGameState(ctx, "game1", models.GameState{
                 
             }); err != nil {
