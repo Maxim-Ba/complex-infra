@@ -7,17 +7,17 @@ package models
 import (
 	"context"
 
-	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/google/uuid"
 )
 
 type Querier interface {
 	CreateAccount(ctx context.Context, arg CreateAccountParams) (Account, error)
 	CreateCharacter(ctx context.Context, arg CreateCharacterParams) (Character, error)
-	GetAccountByID(ctx context.Context, id pgtype.UUID) (Account, error)
+	GetAccountByID(ctx context.Context, id uuid.UUID) (Account, error)
 	GetAccountByLogin(ctx context.Context, login string) (Account, error)
-	GetCharacterByID(ctx context.Context, id pgtype.UUID) (Character, error)
-	GetCharacterWithDetails(ctx context.Context, id pgtype.UUID) (GetCharacterWithDetailsRow, error)
-	ListCharactersByAccount(ctx context.Context, accountID pgtype.UUID) ([]Character, error)
+	GetCharacterByID(ctx context.Context, id uuid.UUID) (Character, error)
+	GetCharacterWithDetails(ctx context.Context, id uuid.UUID) (GetCharacterWithDetailsRow, error)
+	ListCharactersByAccount(ctx context.Context, accountID *uuid.UUID) ([]Character, error)
 }
 
 var _ Querier = (*Queries)(nil)

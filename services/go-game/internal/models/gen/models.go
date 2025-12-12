@@ -5,84 +5,87 @@
 package models
 
 import (
+	"time"
+
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Account struct {
-	ID           pgtype.UUID      `json:"id"`
-	Login        string           `json:"login"`
-	PasswordHash string           `json:"password_hash"`
-	CreatedAt    pgtype.Timestamp `json:"created_at"`
-	Email        pgtype.Text      `json:"email"`
-	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
+	ID           uuid.UUID   `json:"id"`
+	Login        string      `json:"login"`
+	PasswordHash string      `json:"passwordHash"`
+	CreatedAt    time.Time   `json:"createdAt"`
+	Email        pgtype.Text `json:"email"`
+	UpdatedAt    time.Time   `json:"updatedAt"`
 }
 
 type Character struct {
-	ID           pgtype.UUID      `json:"id"`
-	AccountID    pgtype.UUID      `json:"account_id"`
-	ClassID      pgtype.UUID      `json:"class_id"`
-	Name         string           `json:"name"`
-	CreatedAt    pgtype.Timestamp `json:"created_at"`
-	Level        int32            `json:"level"`
-	LastPlayedAt pgtype.Timestamp `json:"last_played_at"`
+	ID           uuid.UUID   `json:"id"`
+	AccountID    *uuid.UUID  `json:"accountId"`
+	ClassID      *uuid.UUID  `json:"classId"`
+	Name         string      `json:"name"`
+	CreatedAt    time.Time   `json:"createdAt"`
+	Level        int32       `json:"level"`
+	LastPlayedAt **time.Time `json:"lastPlayedAt"`
 }
 
 type Characteristic struct {
-	ID           pgtype.UUID `json:"id"`
-	Agility      pgtype.Int4 `json:"agility"`
-	Strength     pgtype.Int4 `json:"strength"`
-	Intelligence pgtype.Int4 `json:"intelligence"`
-	Charisma     pgtype.Int4 `json:"charisma"`
-	Vitality     pgtype.Int4 `json:"vitality"`
-	Armor        pgtype.Int4 `json:"armor"`
-	MagicResist  pgtype.Int4 `json:"magic_resist"`
-	Health       pgtype.Int4 `json:"health"`
-	Mana         pgtype.Int4 `json:"mana"`
-	CharacterID  pgtype.UUID `json:"character_id"`
+	ID           uuid.UUID  `json:"id"`
+	Agility      int32      `json:"agility"`
+	Strength     int32      `json:"strength"`
+	Intelligence int32      `json:"intelligence"`
+	Charisma     int32      `json:"charisma"`
+	Vitality     int32      `json:"vitality"`
+	Armor        int32      `json:"armor"`
+	MagicResist  int32      `json:"magicResist"`
+	Health       int32      `json:"health"`
+	Mana         int32      `json:"mana"`
+	CharacterID  *uuid.UUID `json:"characterId"`
 }
 
 type CharactersEquipmentSlot struct {
-	ID          pgtype.UUID `json:"id"`
-	CharacterID pgtype.UUID `json:"character_id"`
-	SlotTypeID  pgtype.UUID `json:"slot_type_id"`
-	ItemID      pgtype.UUID `json:"item_id"`
+	ID          uuid.UUID  `json:"id"`
+	CharacterID uuid.UUID  `json:"characterId"`
+	SlotTypeID  uuid.UUID  `json:"slotTypeId"`
+	ItemID      *uuid.UUID `json:"itemId"`
 }
 
 type CharactersItem struct {
-	CharacterID  pgtype.UUID `json:"character_id"`
-	ItemID       pgtype.UUID `json:"item_id"`
-	IsEquipped   pgtype.Bool `json:"is_equipped"`
-	SlotPosition pgtype.Int4 `json:"slot_position"`
+	CharacterID  uuid.UUID `json:"characterId"`
+	ItemID       uuid.UUID `json:"itemId"`
+	IsEquipped   bool      `json:"isEquipped"`
+	SlotPosition int32     `json:"slotPosition"`
 }
 
 type CharactersSkill struct {
-	CharacterID pgtype.UUID      `json:"character_id"`
-	SkillID     pgtype.UUID      `json:"skill_id"`
-	LearnedAt   pgtype.Timestamp `json:"learned_at"`
-	SkillLevel  pgtype.Int4      `json:"skill_level"`
-	SlotsCost   pgtype.Int4      `json:"slots_cost"`
+	CharacterID uuid.UUID   `json:"characterId"`
+	SkillID     uuid.UUID   `json:"skillId"`
+	LearnedAt   **time.Time `json:"learnedAt"`
+	SkillLevel  int32       `json:"skillLevel"`
+	SlotsCost   int32       `json:"slotsCost"`
 }
 
 type CharactersSkillSlot struct {
-	ID          pgtype.UUID `json:"id"`
-	CharacterID pgtype.UUID `json:"character_id"`
-	SlotNumber  int32       `json:"slot_number"`
-	SkillID     pgtype.UUID `json:"skill_id"`
+	ID          uuid.UUID  `json:"id"`
+	CharacterID uuid.UUID  `json:"characterId"`
+	SlotNumber  int32      `json:"slotNumber"`
+	SkillID     *uuid.UUID `json:"skillId"`
 }
 
 type Class struct {
-	ID          pgtype.UUID `json:"id"`
+	ID          uuid.UUID   `json:"id"`
 	Name        string      `json:"name"`
 	Description pgtype.Text `json:"description"`
 }
 
 type Item struct {
-	ID          pgtype.UUID `json:"id"`
-	ItemType    int32       `json:"item_type"`
+	ID          uuid.UUID   `json:"id"`
+	ItemType    int32       `json:"itemType"`
 	Name        string      `json:"name"`
 	Description pgtype.Text `json:"description"`
-	MaxStack    pgtype.Int4 `json:"max_stack"`
-	SlotsCost   pgtype.Int4 `json:"slots_cost"`
+	MaxStack    int32       `json:"maxStack"`
+	SlotsCost   int32       `json:"slotsCost"`
 }
 
 type ItemType struct {
@@ -92,16 +95,16 @@ type ItemType struct {
 }
 
 type Skill struct {
-	ID            pgtype.UUID `json:"id"`
+	ID            uuid.UUID   `json:"id"`
 	Name          string      `json:"name"`
 	Description   pgtype.Text `json:"description"`
-	RequiredLevel pgtype.Int4 `json:"required_level"`
-	ManaCost      pgtype.Int4 `json:"mana_cost"`
-	Cooldown      pgtype.Int4 `json:"cooldown"`
-	MaxLevel      pgtype.Int4 `json:"max_level"`
+	RequiredLevel int32       `json:"requiredLevel"`
+	ManaCost      int32       `json:"manaCost"`
+	Cooldown      int32       `json:"cooldown"`
+	MaxLevel      int32       `json:"maxLevel"`
 }
 
 type SlotType struct {
-	ID   pgtype.UUID `json:"id"`
-	Name string      `json:"name"`
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
 }

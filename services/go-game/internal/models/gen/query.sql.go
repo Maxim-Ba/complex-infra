@@ -7,7 +7,9 @@ package models
 
 import (
 	"context"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -19,7 +21,7 @@ RETURNING id, login, password_hash, created_at, email, updated_at
 
 type CreateAccountParams struct {
 	Login        string      `json:"login"`
-	PasswordHash string      `json:"password_hash"`
+	PasswordHash string      `json:"passwordHash"`
 	Email        pgtype.Text `json:"email"`
 }
 
@@ -44,9 +46,9 @@ RETURNING id, account_id, class_id, name, created_at, level, last_played_at
 `
 
 type CreateCharacterParams struct {
-	AccountID pgtype.UUID `json:"account_id"`
-	ClassID   pgtype.UUID `json:"class_id"`
-	Name      string      `json:"name"`
+	AccountID *uuid.UUID `json:"accountId"`
+	ClassID   *uuid.UUID `json:"classId"`
+	Name      string     `json:"name"`
 }
 
 func (q *Queries) CreateCharacter(ctx context.Context, arg CreateCharacterParams) (Character, error) {
@@ -68,7 +70,7 @@ const getAccountByID = `-- name: GetAccountByID :one
 SELECT id, login, password_hash, created_at, email, updated_at FROM account WHERE id = $1
 `
 
-func (q *Queries) GetAccountByID(ctx context.Context, id pgtype.UUID) (Account, error) {
+func (q *Queries) GetAccountByID(ctx context.Context, id uuid.UUID) (Account, error) {
 	row := q.db.QueryRow(ctx, getAccountByID, id)
 	var i Account
 	err := row.Scan(
@@ -104,7 +106,7 @@ const getCharacterByID = `-- name: GetCharacterByID :one
 SELECT id, account_id, class_id, name, created_at, level, last_played_at FROM character WHERE id = $1
 `
 
-func (q *Queries) GetCharacterByID(ctx context.Context, id pgtype.UUID) (Character, error) {
+func (q *Queries) GetCharacterByID(ctx context.Context, id uuid.UUID) (Character, error) {
 	row := q.db.QueryRow(ctx, getCharacterByID, id)
 	var i Character
 	err := row.Scan(
@@ -131,18 +133,18 @@ WHERE c.id = $1
 `
 
 type GetCharacterWithDetailsRow struct {
-	ID           pgtype.UUID      `json:"id"`
-	AccountID    pgtype.UUID      `json:"account_id"`
-	ClassID      pgtype.UUID      `json:"class_id"`
-	Name         string           `json:"name"`
-	CreatedAt    pgtype.Timestamp `json:"created_at"`
-	Level        int32            `json:"level"`
-	LastPlayedAt pgtype.Timestamp `json:"last_played_at"`
-	ClassName    string           `json:"class_name"`
-	AccountLogin string           `json:"account_login"`
+	ID           uuid.UUID   `json:"id"`
+	AccountID    *uuid.UUID  `json:"accountId"`
+	ClassID      *uuid.UUID  `json:"classId"`
+	Name         string      `json:"name"`
+	CreatedAt    time.Time   `json:"createdAt"`
+	Level        int32       `json:"level"`
+	LastPlayedAt **time.Time `json:"lastPlayedAt"`
+	ClassName    string      `json:"className"`
+	AccountLogin string      `json:"accountLogin"`
 }
 
-func (q *Queries) GetCharacterWithDetails(ctx context.Context, id pgtype.UUID) (GetCharacterWithDetailsRow, error) {
+func (q *Queries) GetCharacterWithDetails(ctx context.Context, id uuid.UUID) (GetCharacterWithDetailsRow, error) {
 	row := q.db.QueryRow(ctx, getCharacterWithDetails, id)
 	var i GetCharacterWithDetailsRow
 	err := row.Scan(
@@ -165,7 +167,7 @@ WHERE account_id = $1
 ORDER BY created_at DESC
 `
 
-func (q *Queries) ListCharactersByAccount(ctx context.Context, accountID pgtype.UUID) ([]Character, error) {
+func (q *Queries) ListCharactersByAccount(ctx context.Context, accountID *uuid.UUID) ([]Character, error) {
 	rows, err := q.db.Query(ctx, listCharactersByAccount, accountID)
 	if err != nil {
 		return nil, err
